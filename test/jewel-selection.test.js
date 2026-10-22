@@ -46,3 +46,5 @@ test('turquoise can form open nine gates but cannot be discarded to declare open
  const rv=M.Util.hule(h,null,M.Util.hule_param({rule:r,menfeng:1}));assert.ok(rv.hupai.some(y=>y.name.includes('九蓮')));assert.ok(!rv.hupai.some(y=>y.name.includes('四暗刻')));
  const reach=M.Shoupai.fromString('m123p055s789z33,p123-');assert.equal(M.Game.allow_lizhi(r,reach,'p0',50,25000),false);assert.equal(M.Game.allow_lizhi(r,reach,'p5',50,25000),true);
 });
+
+require('node:assert/strict').deepEqual(require('../offline/jewels').rawTiles('m3-45,p55+5,s777=7'),['m3','m4','m5','p5','p5','p5','s7','s7','s7','s7']);

@@ -22,7 +22,7 @@ function configure(ids){
  if(ids.filter(id=>BY_ID[id].pocchi).length>3)throw Error('ポッチは最大3種類です');
  return tiles;
 }
-function rawTiles(text){const out=[];for(const part of text.match(/[mpsz][0-9A]+/g)||[])for(const n of part.slice(1))out.push(part[0]+n);return out;}
+function rawTiles(text){const out=[];for(const part of text.replace(/[+=_*!-]/g,'').match(/[mpsz][0-9A]+/g)||[])for(const n of part.slice(1))out.push(part[0]+n);return out;}
 function owned(rule,hand){return rawTiles(typeof hand==='string'?hand:hand.toString()).map(t=>rule.gemTiles?.[t]).filter(Boolean);}
 function has(rule,hand,effect){return owned(rule,hand).some(g=>g.effect===effect);}
 function wildcard(rule,hand){const g=rule.gemTiles?.[hand._zimo];return !!g?.pocchi && (g.id==='gold-pocchi'||hand.lizhi);}
@@ -36,7 +36,7 @@ function bonusBreakdown(h,points,unlockedYaku,rule){
  for(const y of h.hupai||[])if(['一発','裏ドラ'].includes(y.name))add(y.name,+y.fanshu||0);
  if(h.damanguan)add('役満祝儀',(h.baojia==null?10:20)*h.damanguan,h.damanguan+'倍役満');
  else if(h.fanshu>=13)add('数え役満祝儀',h.baojia==null?5:10);
- if((h.hupai||[]).some(y=>y.name===unlockedYaku))add('全役解放',5,unlockedYaku);
+ if((h.hupai||[]).some(y=>y.name===unlockedYaku))add('祝儀手役',5,unlockedYaku);
  const winning=h.pocchiAs||h.winningTile,garnetValue=garnet(h.indicators,h.garnetUra),crystalValue=number(winning);
  for(const g of items){let amount=0,reason='';
   if(['fixed','amethyst','pearl','turquoise'].includes(g.effect))amount=g.chips;

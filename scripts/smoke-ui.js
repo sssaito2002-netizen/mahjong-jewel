@@ -26,13 +26,14 @@ const {chromium}=require('playwright'),http=require('http'),fs=require('fs'),pat
   await page.setViewportSize({width:844,height:390});
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth&&document.documentElement.scrollHeight<=innerHeight+1));
   for(const selector of ['#table','.hand-panel','#unlock-badge','#hand']){const box=await page.locator(selector).boundingBox();assert.ok(box&&box.x>=0&&box.y>=0&&box.x+box.width<=844&&box.y+box.height<=391,selector);}
+  for(const viewport of [{width:390,height:844},{width:844,height:290},{width:844,height:390}]){await page.setViewportSize(viewport);assert.ok(await page.evaluate(()=>{const c=document.querySelector('.center').getBoundingClientRect(),b=document.querySelector('#unlock-badge').getBoundingClientRect(),d=document.querySelector('#indicators').getBoundingClientRect();return b.right<c.left&&b.top>c.top&&d.width>=22&&[...document.querySelectorAll('.score')].every(s=>{const r=s.getBoundingClientRect();return r.bottom<=c.bottom&&r.top>=c.top;});}));}
   assert.equal(await page.locator('#live-chips').isVisible(),false);assert.equal(await page.locator('#unlock-central').textContent(),await page.evaluate(()=>human._rule.unlockedYaku));
   await page.locator('#open-table-menu').click();assert.equal(await page.locator('#live-chips').isVisible(),true);await page.locator('#close-table-menu').click();
   await page.evaluate(()=>{globalThis.riichiBackup={hand:human.shoupai,pending};human.model.shoupai[human._menfeng]=E.M.Shoupai.fromString('m123p555s789z1155*').zimo('p5');pending={options:[{reply:{dapai:'p5_'}}],reply:()=>{}};renderHand();});
   assert.equal(await page.locator('#hand button:enabled').count(),1);assert.equal(await page.locator('#hand button.draw:enabled').count(),1);assert.equal(await page.locator('#hand button[data-tile=p5]:disabled').count(),3);
   await page.evaluate(()=>{human.model.shoupai[human._menfeng]=riichiBackup.hand;pending=riichiBackup.pending;renderHand();});
   await page.screenshot({path:'mahjong-jewel-landscape.png',fullPage:true});await page.setViewportSize({width:390,height:844});
-  console.log('Landscape table fits viewport, external information is in menu, unlock is central, duplicate riichi hand tiles are disabled: OK');
+  console.log('Landscape table fits viewport, external information is in menu, bonus target is at bottom left, duplicate riichi hand tiles are disabled: OK');
   await page.screenshot({path:'mahjong-jewel-ui.png',fullPage:true});await page.setViewportSize({width:1200,height:1000});await page.screenshot({path:'mahjong-jewel-desktop.png',fullPage:true});
   assert.deepEqual(errors,[]);assert.deepEqual(external,[]);console.log('Mobile/desktop table, direct tile discards, 20 decisions, CPU turns, selection caps and no external requests: OK');
   if(await page.locator('#riichi-confirm').evaluate(el=>el.open))await page.locator('#riichi-next').click();

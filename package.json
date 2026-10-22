@@ -1,0 +1,15 @@
+{
+  "name": "mahjong-jewel-prototype",
+  "version": "0.4.0",
+  "private": true,
+  "description": "Offline Mahjong Jewel Android preview",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test",
+    "bundle": "node scripts/bundle.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {}
+}

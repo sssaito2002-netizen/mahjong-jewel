@@ -16,11 +16,13 @@ import android.webkit.WebResourceResponse;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.content.Intent;
+import android.content.ActivityNotFoundException;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 
 public class MainActivity extends Activity {
     private WebView web;
+    private static final String ONLINE_URL = "https://houseki-mahjong-online.onrender.com/";
     private static final String ORIGIN = "https://appassets.androidplatform.net/";
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -54,7 +56,20 @@ public class MainActivity extends Activity {
                 }
                 return new WebResourceResponse("text/plain", "UTF-8", 404, "Not Found", null, new ByteArrayInputStream(new byte[0]));
             }
-            @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) { return !request.getUrl().toString().startsWith(ORIGIN); }
+            @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                String url = request.getUrl().toString();
+                if (request.isForMainFrame() && request.hasGesture() && ONLINE_URL.equals(url)) {
+                    try {
+                        startActivity(new Intent(Intent.ACTION_VIEW, request.getUrl()).addCategory(Intent.CATEGORY_BROWSABLE));
+                    } catch (ActivityNotFoundException e) {
+                        new AlertDialog.Builder(MainActivity.this)
+                            .setMessage("オンライン対戦を開くブラウザが見つかりません。ブラウザをインストールしてください。")
+                            .setPositiveButton("閉じる", null).show();
+                    }
+                    return true;
+                }
+                return !url.startsWith(ORIGIN);
+            }
         });
         web.setWebChromeClient(new WebChromeClient() {
             @Override public boolean onJsConfirm(WebView view, String url, String message, JsResult result) {

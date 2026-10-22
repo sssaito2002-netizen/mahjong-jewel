@@ -1,5 +1,5 @@
 'use strict';
-const crypto=require('node:crypto'),E=require('../offline/engine');
+const crypto=require('./crypto'),E=require('../offline/engine');
 const copy=x=>JSON.parse(JSON.stringify(x));
 class Rooms {
  constructor({maxRooms=8,turnMs=20000,callMs=10000,confirmMs=15000,speed=0,idleMs=2*3600000}={}){Object.assign(this,{maxRooms,turnMs,callMs,confirmMs,speed,idleMs});this.rooms=new Map();}

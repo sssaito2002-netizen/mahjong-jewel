@@ -31,6 +31,11 @@ jobs:
         env:
           SMOKE_ROOT: _site
           SMOKE_BASE: /mahjong-jewel/
+      - name: Test nearby direct connections and offline boot
+        run: node scripts/smoke-nearby.js
+        env:
+          SMOKE_ROOT: _site
+          SMOKE_BASE: /mahjong-jewel/
       - uses: actions/upload-artifact@v4
         with:
           name: houseki-mahjong-web

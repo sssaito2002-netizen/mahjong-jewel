@@ -35,7 +35,7 @@ public class MainActivity extends Activity {
                 runOnUiThread(() -> {
                     Intent send = new Intent(Intent.ACTION_SEND);
                     send.setType("text/plain");
-                    send.putExtra(Intent.EXTRA_SUBJECT, "Mahjong Jewel 成績");
+                    send.putExtra(Intent.EXTRA_SUBJECT, "宝石麻雀 成績");
                     send.putExtra(Intent.EXTRA_TEXT, json);
                     startActivity(Intent.createChooser(send, "成績を保存・共有"));
                 });

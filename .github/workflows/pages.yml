@@ -1,0 +1,55 @@
+name: Publish 宝石麻雀 web files
+on:
+  push:
+    branches: [codex/offline-android]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: offline-web-pages
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm test
+      - run: node scripts/build-pages.js
+      - run: npm install --no-save --package-lock=false --no-audit --no-fund --fetch-retries=1 --fetch-timeout=60000 playwright@1.56.1
+      - run: npx playwright install --with-deps chromium
+      - name: Test static site at the GitHub Pages project path
+        run: node scripts/smoke-ui.js
+        env:
+          SMOKE_ROOT: _site
+          SMOKE_BASE: /mahjong-jewel/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: houseki-mahjong-web
+          path: _site/
+          include-hidden-files: true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: houseki-mahjong-web-preview
+          path: mahjong-jewel-*.png
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: houseki-mahjong-web
+          path: _site
+      - name: Update static publishing branch
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: _site
+          publish_branch: gh-pages
+          enable_jekyll: false

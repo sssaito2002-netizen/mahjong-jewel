@@ -1,4 +1,4 @@
-# Jewel Mahjong — offline Android preview 0.6.1
+# 宝石麻雀 — オフライン対局・Android・Web
 
 人間1人対CPU3人で遊ぶ、通信不要の東風戦アプリです。元ZIPはリポジトリ直下へ展開済み。通常麻雀はMITのmajiang-coreを同梱しています。
 
@@ -44,3 +44,7 @@ Androidはデバッグ署名の試作版です。実機での操作確認、途�
 ## v0.6.3
 
 1本場1,500点・東西の場風牌、祝儀計算内訳、リーチ確認ポップアップ、鳴き選択の牌画像を追加。対人対戦は未実装です。[要件定義ドラフト](docs/multiplayer-requirements.md)で方式・人数・時間制限などを相談します。
+
+## GitHub Pages
+
+`node scripts/build-pages.js`で`_site/`に公開用ファイルだけを生成します。`pages.yml`はテスト後に`gh-pages`ブランチへ配信します。GitHubのSettings → Pages → Deploy from a branch → `gh-pages` / `(root)`で有効化してください。想定URLは https://sssaito2002-netizen.github.io/mahjong-jewel/ です。GitHub Freeの個人アカウントでは公開リポジトリが必要です。非公開リポジトリを維持する場合は対応プランか別の静的ホスティングを選択します。初回読込には通信が必要です。成績は利用した端末・ブラウザ内に保存され、APKの成績とは共有しません。ブラウザを閉じた途中対局の復元とオフライン再読込は未対応です。

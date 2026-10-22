@@ -92,7 +92,7 @@ function transfer(chips,winner,loser,n) {
 }
 class Game extends M.Game {
  constructor(players,done,extra={}) {
-  super(players,done,rule({unlockedYaku:UNLOCK_YAKU[Math.floor(Math.random()*UNLOCK_YAKU.length)],...extra}),'Mahjong Jewel — Offline');
+  super(players,done,rule({unlockedYaku:UNLOCK_YAKU[Math.floor(Math.random()*UNLOCK_YAKU.length)],...extra}),'宝石麻雀 — Offline');
   this.chips=[0,0,0,0];this.busted=new Set();this.bonusLog=[];
  }
  add_paipu(msg) {

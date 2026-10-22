@@ -30,29 +30,33 @@ function number(p){return p&&p[0]!=='z'?(p[1]==='0'||p[1]==='A'?5:+p[1]):0;}
 function garnet(indicators=[],ura=[]){return Math.max(0,...indicators.map((p,i)=>number(p[0]==='z'?ura[i]:p)));}
 function full(rule,items){const numbers=Object.values(rule.gemTiles||{}).filter(g=>!g.pocchi);return numbers.length>0&&numbers.every(g=>items.some(x=>x.id===g.id))&&new Set(items.filter(g=>g.pocchi).map(g=>g.id)).size>=2;}
 function modifyHan(items,han,choice){const car=items.some(g=>g.effect==='carnelian');const mode=car&&(choice==='han'||han<=1)?'han':'chips';if(car)han+=mode==='han'?5:-1;const pearls=items.filter(g=>g.effect==='pearl').length;return {han:han*2**pearls,carnelianChoice:car?mode:null};}
-function bonus(h,points,unlockedYaku,rule){
- const items=owned(rule,h.shoupai), count=e=>items.filter(g=>g.effect===e).length;
- const usual=(h.hupai||[]).filter(y=>['一発','裏ドラ'].includes(y.name)).reduce((n,y)=>n+(+y.fanshu||0),0);
- const winning=h.pocchiAs||h.winningTile;let total=usual;
- // Yakuman chips are charged per payer, just like all other chips.
- if(h.damanguan)total+=(h.baojia==null?10:20)*h.damanguan;
- else if(h.fanshu>=13)total+=h.baojia==null?5:10;
- if((h.hupai||[]).some(y=>y.name===unlockedYaku))total+=5;
- for(const g of items){if(['fixed','amethyst','pearl','turquoise'].includes(g.effect))total+=g.chips;
-  else if(g.effect==='lapis')total+=h.fanshu||13;
-  else if(g.effect==='tourmaline')total+=Math.max(0,...String(Math.floor(Math.max(0,points)/100)).slice(-3).split('').map(Number));
-  else if(g.effect==='garnet')total+=garnet(h.indicators,h.garnetUra);
-  else if(g.effect==='crystal')total+=number(winning);
-  else if(g.effect==='gane')total+=Math.max(garnet(h.indicators,h.garnetUra),number(winning));
-  else if(g.effect==='black')total+=h.blackChips||0;
-  else if(g.effect==='carnelian')total+=h.carnelianChoice==='han'?-1:5;
+function bonusBreakdown(h,points,unlockedYaku,rule){
+ const items=owned(rule,h.shoupai),lines=[];
+ const add=(label,amount,reason='')=>lines.push({label,amount,reason});
+ for(const y of h.hupai||[])if(['一発','裏ドラ'].includes(y.name))add(y.name,+y.fanshu||0);
+ if(h.damanguan)add('役満祝儀',(h.baojia==null?10:20)*h.damanguan,h.damanguan+'倍役満');
+ else if(h.fanshu>=13)add('数え役満祝儀',h.baojia==null?5:10);
+ if((h.hupai||[]).some(y=>y.name===unlockedYaku))add('全役解放',5,unlockedYaku);
+ const winning=h.pocchiAs||h.winningTile,garnetValue=garnet(h.indicators,h.garnetUra),crystalValue=number(winning);
+ for(const g of items){let amount=0,reason='';
+  if(['fixed','amethyst','pearl','turquoise'].includes(g.effect))amount=g.chips;
+  else if(g.effect==='lapis'){amount=h.fanshu||13;reason='最終'+amount+'翻';}
+  else if(g.effect==='tourmaline'){amount=Math.max(0,...String(Math.floor(Math.max(0,points)/100)).slice(-3).split('').map(Number));reason='和了前'+points+'点の万・千・百の位の最大値';}
+  else if(g.effect==='garnet'){amount=garnetValue;reason='表示牌の最大数字（字牌は裏表示を参照）';}
+  else if(g.effect==='crystal'){amount=crystalValue;reason='和了牌の数字（字牌は0）';}
+  else if(g.effect==='gane'){amount=Math.max(garnetValue,crystalValue);reason='ガーネット'+garnetValue+'／クリスタル'+crystalValue+'の大きい方';}
+  else if(g.effect==='black'){amount=h.blackChips||0;reason='么九牌・暗刻・暗槓／タンヤオの効果';}
+  else if(g.effect==='carnelian'){amount=h.carnelianChoice==='han'?-1:5;reason=h.carnelianChoice==='han'?'翻数優先':'祝儀優先';}
+  add(g.name,amount,reason);
  }
- if(items.some(g=>g.id==='gold')&&items.some(g=>g.id==='gold-pocchi')&&(!h.pocchiAs||h.pocchiAs==='z6'))total+=10;
- return total*2**count('amethyst');
+ if(items.some(g=>g.id==='gold')&&items.some(g=>g.id==='gold-pocchi')&&(!h.pocchiAs||h.pocchiAs==='z6'))add('ゴールド＋ゴールド發ポッチ',10);
+ const subtotal=lines.reduce((n,l)=>n+l.amount,0),amethysts=items.filter(g=>g.effect==='amethyst'),multiplier=2**amethysts.length;
+ return {lines,subtotal,multiplier,multipliers:amethysts.map(g=>g.name),perPayer:subtotal*multiplier};
 }
+function bonus(h,points,unlockedYaku,rule){return bonusBreakdown(h,points,unlockedYaku,rule).perPayer;}
 function blackChips(tiles,mianzi){
  const outside=t=>t[0]==='z'||/[19]/.test(t[1]);const n=tiles.filter(outside).length;if(!n)return 5;
  let result=n;for(const m of mianzi){if(!outside(m.slice(0,2)))continue;if(/^[mpsz]([1-9])\1\1\1$/.test(m))result+=6;else if(/^[mpsz]([1-9])\1\1(?:_!)?$/.test(m))result+=2;}
  return result;
 }
-module.exports={SOURCES,CATALOG,BY_ID,DEFAULT,configure,rawTiles,owned,has,wildcard,number,garnet,full,modifyHan,bonus,blackChips};
+module.exports={SOURCES,CATALOG,BY_ID,DEFAULT,configure,rawTiles,owned,has,wildcard,number,garnet,full,modifyHan,bonus,bonusBreakdown,blackChips};

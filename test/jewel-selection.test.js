@@ -15,7 +15,7 @@ test('pearl multiplies han and carnelian supports both modes with low-han fallba
  const chips=score('m123p406s789z22555',['carnelian'],{jewelChoice:'chips'});const han=score('m123p406s789z22555',['carnelian'],{jewelChoice:'han'});assert.equal(han.fanshu,chips.fanshu+6);assert.equal(chips.carnelianChoice,'chips');assert.equal(han.carnelianChoice,'han');assert.deepEqual(J.modifyHan([J.BY_ID.carnelian],1,'chips'),{han:6,carnelianChoice:'han'});
 });
 test('turquoise restores open pinfu and permits riichi without inventing concealed triplets',()=>{
- const hand=M.Shoupai.fromString('m123p40s789z33,p123-'),r=E.rule({gemSelection:['turquoise']});
+ const hand=M.Shoupai.fromString('m123p40s789z44,p123-'),r=E.rule({gemSelection:['turquoise']});
  const result=M.Util.hule(hand,'p6+',M.Util.hule_param({rule:r,menfeng:1}));assert.ok(result.hupai.some(y=>y.name==='平和'));assert.equal(result.fu,30);
  hand.zimo('p6');assert.ok(M.Game.allow_lizhi(r,hand,null,50,25000));
  assert.equal(M.Game.allow_lizhi(E.rule({gemSelection:[]}),hand,null,50,25000),false);

@@ -9,7 +9,7 @@ function rule(extra={}) {
  const legacy={white:'topaz','amethyst-white':'amethyst-white',gold:'gold-pocchi',gane:'gane-pocchi'};
  const ids=extra.gemSelection||['lapis','amethyst-p','tourmaline',...modes.map(x=>legacy[x]||x)];
  const gemTiles=J.configure(ids);
- return M.rule({'場数':1,'延長戦方式':0,'赤牌':{m:0,p:0,s:0},jewelBonus:true,fullJewel:true,...extra,
+ return M.rule({'場数':1,'延長戦方式':0,'本場点':1500,'場風牌':[1,3],'赤牌':{m:0,p:0,s:0},jewelBonus:true,fullJewel:true,...extra,
   gemSelection:ids.slice(),gemTiles,pocchiModes:modes.slice(),whitePocchi:ids.some(x=>['topaz','amethyst-white'].includes(x)),pocchiAmethyst:ids.includes('amethyst-white'),goldPocchi:ids.includes('gold-pocchi'),ganePocchi:ids.includes('gane-pocchi')});
 }
 function actions(p,msg) {
@@ -55,7 +55,7 @@ function cpu(p,options) {
  // Only call when doing so improves shanten and preserves an obvious open yaku.
  for(const a of options.filter(a=>a.reply.fulou)) {
   const h=p.shoupai.clone().fulou(a.reply.fulou);
-  const honors=[5,6,7,p._menfeng+1,p.model.zhuangfeng+1];
+  const honors=[5,6,7,p._menfeng+1,...(p._rule['場風牌']||[p.model.zhuangfeng+1])];
   const yakuhai=h._fulou.some(m=>m[0]==='z'&&honors.includes(+m[1]));
   const simple= !/[19]/.test(h.toString().replace(/z\d+/g,''))&&!h.toString().includes('z');
   if((yakuhai||simple) && M.Util.xiangting(h)<M.Util.xiangting(p.shoupai)) return a.reply;
@@ -73,9 +73,9 @@ class Player extends M.Player {
   this.onUpdate(this.message,this);
   const callback=this._callback;
   if(this.message.hule&&this.confirmWin){let replied=false;return this.confirmWin(this.message.hule,()=>{if(replied)return;replied=true;callback({});},this);}
-  const opts=actions(this,this.message);
-  if(!opts.length)return callback({});
-  this.decide(opts,reply=>callback(reply||{}),this.message,this);
+  const proceed=()=>{const opts=actions(this,this.message);if(!opts.length)return callback({});this.decide(opts,reply=>callback(reply||{}),this.message,this);};
+  if(this.message.dapai?.p.endsWith('*')&&this.confirmRiichi){let replied=false;return this.confirmRiichi(this.message.dapai,()=>{if(replied)return;replied=true;proceed();},this);}
+  proceed();
  }
 
 }
@@ -104,7 +104,8 @@ class Game extends M.Game {
    h.winningTile=M.Shoupai.fromString(h.shoupai)._zimo;
    h.unlockedYaku=this._rule.unlockedYaku;
    h.unlockedChips=(h.hupai||[]).some(y=>y.name===h.unlockedYaku)?5:0;
-   const n=bonus(h,this.model.defen[winner],this._rule.unlockedYaku,this._rule);transfer(this.chips,winner,loser,n);
+   h.chipBreakdown=J.bonusBreakdown(h,this.model.defen[winner],this._rule.unlockedYaku,this._rule);
+   const n=h.chipBreakdown.perPayer;transfer(this.chips,winner,loser,n);
    const victims=[];
    for(let seat=0;seat<4;seat++) {
     const id=ids[seat];

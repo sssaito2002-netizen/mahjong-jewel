@@ -200,7 +200,7 @@ function hule_mianzi(shoupai, rongpai) {
 
 function get_hudi(mianzi, zhuangfeng, menfeng, rule) {
 
-    const zhuangfengpai = new RegExp(`^z${zhuangfeng+1}.*$`);
+    const zhuangfengpai = new RegExp(`^z[${(rule['場風牌']||[zhuangfeng+1]).join('')}].*$`);
     const menfengpai    = new RegExp(`^z${menfeng+1}.*$`);
     const sanyuanpai    = /^z[567].*$/;
 
@@ -235,6 +235,7 @@ function get_hudi(mianzi, zhuangfeng, menfeng, rule) {
         danqi:      false,
         pinghu:     false,
         zhuangfeng: zhuangfeng,
+        roundWinds: rule['場風牌']||[zhuangfeng+1],
         menfeng:    menfeng
     };
 
@@ -328,9 +329,8 @@ function get_hupai(mianzi, hudi, pre_hupai, post_hupai, rule) {
     function fanpai() {
         let feng_hanzi = ['東','南','西','北'];
         let fanpai_all = [];
-        if (hudi.kezi.z[hudi.zhuangfeng+1])
-                fanpai_all.push({ name: '場風 '+feng_hanzi[hudi.zhuangfeng],
-                                  fanshu: 1 });
+        for (const wind of hudi.roundWinds) if (hudi.kezi.z[wind])
+                fanpai_all.push({ name: '場風 '+feng_hanzi[wind-1], fanshu: 1 });
         if (hudi.kezi.z[hudi.menfeng+1])
                 fanpai_all.push({ name: '自風 '+feng_hanzi[hudi.menfeng],
                                   fanshu: 1 });
@@ -637,6 +637,7 @@ function get_defen(fu, hupai, rongpai, param) {
 
     let fenpei  = [ 0, 0, 0, 0 ];
     let chang = param.jicun.changbang;
+    const honba = param.rule['本場点'] ?? 300;
     let lizhi = param.jicun.lizhibang;
 
     if (baojia2 != null) {
@@ -653,8 +654,8 @@ function get_defen(fu, hupai, rongpai, param) {
                     ? baojia2
                     : (menfeng + { '+': 1, '=': 2, '-': 3}[rongpai[2]]) % 4;
         defen  = Math.ceil(base * (menfeng == 0 ? 6 : 4) / 100) * 100;
-        fenpei[menfeng] += defen + chang * 300 + lizhi * 1000;
-        fenpei[baojia]  -= defen + chang * 300;
+        fenpei[menfeng] += defen + chang * honba + lizhi * 1000;
+        fenpei[baojia]  -= defen + chang * honba;
     }
     else {
         let zhuangjia = Math.ceil(base * 2 / 100) * 100;
@@ -663,18 +664,18 @@ function get_defen(fu, hupai, rongpai, param) {
             defen = zhuangjia * 3;
             for (let l = 0; l < 4; l++) {
                 if (l == menfeng)
-                        fenpei[l] += defen     + chang * 300 + lizhi * 1000;
-                else    fenpei[l] -= zhuangjia + chang * 100;
+                        fenpei[l] += defen     + chang * honba + lizhi * 1000;
+                else    fenpei[l] -= zhuangjia + chang * (honba / 3);
             }
         }
         else {
             defen = zhuangjia + sanjia * 2;
             for (let l = 0; l < 4; l++) {
                 if (l == menfeng)
-                        fenpei[l] += defen     + chang * 300 + lizhi * 1000;
+                        fenpei[l] += defen     + chang * honba + lizhi * 1000;
                 else if (l == 0)
-                        fenpei[l] -= zhuangjia + chang * 100;
-                else    fenpei[l] -= sanjia    + chang * 100;
+                        fenpei[l] -= zhuangjia + chang * (honba / 3);
+                else    fenpei[l] -= sanjia    + chang * (honba / 3);
             }
         }
     }

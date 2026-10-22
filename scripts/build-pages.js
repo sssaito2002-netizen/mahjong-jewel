@@ -7,4 +7,6 @@ fs.cpSync(path.join(root,'public/offline'),out,{recursive:true});
 fs.copyFileSync(path.join(root,'THIRD_PARTY_NOTICES.md'),path.join(out,'THIRD_PARTY_NOTICES.md'));
 fs.copyFileSync(path.join(root,'vendor/majiang-core/LICENSE'),path.join(out,'majiang-core-LICENSE.txt'));
 fs.writeFileSync(path.join(out,'.nojekyll'),'');
+const index=path.join(out,'index.html');
+fs.writeFileSync(index,fs.readFileSync(index,'utf8').replace('<main><div id="status"','<main><p><a href="https://houseki-mahjong-online.onrender.com/">ルーム対戦で遊ぶ（試作版）</a></p><div id="status"'));
 console.log('Static site built in _site/ (relative URLs support GitHub Pages project paths)');

@@ -73,8 +73,9 @@ class Player extends M.Player {
  }
  respond() {
   this.onUpdate(this.message,this);
-  const opts=actions(this,this.message);
   const callback=this._callback;
+  if(this.message.hule&&this.confirmWin){let replied=false;return this.confirmWin(this.message.hule,()=>{if(replied)return;replied=true;callback({});},this);}
+  const opts=actions(this,this.message);
   if(!opts.length)return callback({});
   this.decide(opts,reply=>callback(reply||{}),this.message,this);
  }
@@ -95,7 +96,9 @@ class Game extends M.Game {
   this.chips=[0,0,0,0];this.busted=new Set();this.bonusLog=[];
  }
  add_paipu(msg) {
+  if(msg.qipai)msg.qipai.chipBalances=this.chips.slice();
   if(msg.hule){
+   const before=this.chips.slice();
    const h=msg.hule, ids=this.model.player_id, winner=ids[h.l], loser=h.baojia===null?null:ids[h.baojia];
    h.pocchiAmethyst=this._rule.pocchiAmethyst;
    h.indicators=this.model.shan.baopai;
@@ -111,7 +114,7 @@ class Game extends M.Game {
      transfer(this.chips,winner,id,10);this.busted.add(id);victims.push(id);
     }
    }
-   h.jewelChips=n;h.tobi=victims;this.bonusLog.push({winner,loser,n,victims});
+   h.jewelChips=n;h.jewelTotal=n*(loser===null?3:1);h.chipWinner=winner;h.chipLoser=loser;h.chipBalances=this.chips.slice();h.chipDelta=this.chips.map((v,id)=>v-before[id]);h.tobi=victims;this.bonusLog.push({winner,loser,n,victims});
   }
   super.add_paipu(msg);
  }

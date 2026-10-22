@@ -1,6 +1,6 @@
 'use strict';
 const E=JewelOffline,J=E.J,$=id=>document.getElementById(id),names=['あなた','CPU 1','CPU 2','CPU 3'];
-let game,pending=null,session=null,finished=true,human=null,riichi=false;
+let game,pending=null,session=null,finished=true,human=null,riichi=false,liveChips=[0,0,0,0],winContinuation=null;
 const honor=['','東','南','西','北','白','發','中'];
 const effectText={fixed:'基本祝儀を加算',amethyst:'祝儀+1枚、全祝儀を2倍',lapis:'最終翻数が祝儀枚数',pearl:'翻数を2倍、祝儀+3枚',carnelian:'和了時に −1翻/+5枚 または +5翻/−1枚を選択',turquoise:'祝儀+4枚、喰い下がりなし・鳴きリーチ可',black:'么九牌が祝儀。タンヤオ5枚、暗刻5枚、暗槓10枚',garnet:'ドラ表示牌の最大数字（字牌は裏表示を参照）',crystal:'和了牌の数字が祝儀（字牌0枚）',tourmaline:'持ち点の万・千・百の位の最大数字',gane:'ガーネットとクリスタルの高い方'};
 function currentRule(){return human?human._rule:E.rule();}
@@ -18,14 +18,42 @@ function render(player){if(!player?.model.shan)return;const m=player.model,self=
  if(relative){const backs=document.createElement('div');backs.className='opponent-hand'+(relative===1?' right':relative===3?' left':'');const h=m.shoupai[l],count=h._bingpai._+['m','p','s','z'].reduce((sum,s)=>sum+h._bingpai[s].slice(1,s==='z'?8:10).reduce((a,b)=>a+b,0),0);for(let n=0;n<count;n++){const back=document.createElement('span');back.className='back';backs.append(back);}$('backs').append(backs);}}
  $('round').textContent=honor[m.zhuangfeng+1]+(m.jushu+1)+'局';$('wall').textContent=m.changbang+'本場 / 供託'+m.lizhibang+' / 残'+m.shan.paishu;
  $('indicators').replaceChildren();for(const p of m.shan.baopai)$('indicators').append(tile(p));$('status').textContent=m.lunban>=0?names[m.player_id[m.lunban]]+'の手番':'対局準備中';$('unlock').textContent='解放役：'+(player._rule.unlockedYaku||'なし')+' ＋5枚';$('selection-summary').textContent='宝石 '+player._rule.gemSelection.length+'種類';renderHand();}
-function update(msg,p){render(p);if(msg.hule){const h=msg.hule;log(`${names[p.model.player_id[h.l]]} ${h.baojia===null?'ツモ':'ロン'} ${h.defen}点 / ${(h.hupai||[]).map(y=>y.name).join('・')} / 祝儀${h.jewelChips||0}枚${h.pocchiAs?' / ポッチ→'+label(h.pocchiAs):''}`);}if(msg.pingju)log('流局：'+msg.pingju.name);}
+function signed(n){return (n>0?'+':n<0?'−':'')+Math.abs(n);}
+function renderLiveChips(){
+ $('live-chip-state').textContent=finished?'精算済み・累積成績に反映済み':'進行中・東風終了時に累積へ反映';
+ $('live-chip-rows').replaceChildren();
+ for(let id=0;id<4;id++){const row=document.createElement('div');row.className='live-chip-row '+(liveChips[id]>0?'positive':liveChips[id]<0?'negative':'');row.dataset.player=id;const name=document.createElement('span');name.textContent=names[id];const amount=document.createElement('b');amount.textContent=signed(liveChips[id])+'枚';row.append(name,amount);$('live-chip-rows').append(row);}
+}
+function receipt(h){const n=h.jewelChips||0,total=h.jewelTotal??n*(h.baojia===null?3:1);if(!n)return '祝儀0枚';return '祝儀 '+signed(total)+'枚（'+(h.baojia===null?'各家':'放銃者')+(n>0?'から':'へ')+Math.abs(n)+'枚）';}
+function update(msg,p){
+ const snapshot=msg.hule?.chipBalances||msg.qipai?.chipBalances;
+ if(snapshot){liveChips=snapshot.slice();renderLiveChips();}
+ render(p);
+ if(msg.hule){const h=msg.hule;log(`${names[p.model.player_id[h.l]]} ${h.baojia===null?'ツモ':'ロン'} ${h.defen}点 / ${(h.hupai||[]).map(y=>y.name).join('・')} / ${receipt(h)}${h.tobi?.length?' / トビ賞+'+(h.tobi.length*10)+'枚':''}${h.pocchiAs?' / ポッチ→'+label(h.pocchiAs):''}`);}
+ if(msg.pingju)log('流局：'+msg.pingju.name);
+}
+function showWin(h,done,p){
+ winContinuation=done;
+ $('win-title').textContent=names[p.model.player_id[h.l]]+' '+(h.baojia===null?'ツモ':'ロン');
+ $('win-points').textContent=h.defen.toLocaleString()+'点 / '+(h.damanguan?'役満'+(h.damanguan>1?' ×'+h.damanguan:''):(h.fanshu||0)+'翻 '+(h.fu||0)+'符');
+ $('win-hand').replaceChildren();$('win-melds').replaceChildren();
+ const hand=E.M.Shoupai.fromString(h.shoupai);for(const t of handTiles(hand))$('win-hand').append(tile(t));
+ for(const meld of hand._fulou){const group=document.createElement('span');group.className='win-meld';for(const t of J.rawTiles(meld))group.append(tile(t));$('win-melds').append(group);}
+ $('win-yaku').textContent=(h.hupai||[]).map(y=>y.name+(typeof y.fanshu==='number'?' '+y.fanshu+'翻':'')).join(' / ');
+ const gems=J.owned(p._rule,h.shoupai);$('win-jewels').textContent='使用した宝石：'+(gems.map(g=>g.name).join('・')||'なし');
+ $('win-receipt').textContent=receipt(h)+(h.tobi?.length?' / トビ賞+'+(h.tobi.length*10)+'枚':'')+(h.pocchiAs?' / ポッチは'+label(h.pocchiAs)+'として和了':'');
+ $('win-payments').replaceChildren();for(let id=0;id<4;id++){const row=document.createElement('tr');const seat=p.model.player_id.indexOf(id);for(const text of [names[id],signed(h.fenpei?.[seat]||0)+'点',signed(h.chipDelta?.[id]||0)+'枚']){const cell=document.createElement('td');cell.textContent=text;row.append(cell);}$('win-payments').append(row);}
+ $('win-confirm').showModal();
+}
+$('win-next').onclick=()=>{const callback=winContinuation;if(!callback)return;winContinuation=null;$('win-confirm').close();callback();};
+$('win-confirm').addEventListener('cancel',event=>event.preventDefault());
 function choose(options,reply,msg,p){pending={options,reply};riichi=false;$('actions').replaceChildren();render(p);if(options.some(a=>a.reply.dapai?.endsWith('*'))){const b=document.createElement('button');b.textContent='リーチ';b.onclick=()=>{riichi=!riichi;b.classList.toggle('armed',riichi);renderHand();};$('actions').append(b);}for(const a of options.filter(a=>!a.reply.dapai)){const b=document.createElement('button');b.textContent=a.label;b.onclick=()=>consume(a.reply);$('actions').append(b);}}
-function totals(){try{const d=JSON.parse(localStorage.getItem('jewel-offline-results-v1')||'{"totals":{}}');$('totals').textContent=names.map((n,i)=>{const t=d.totals[i]||{rankChips:0,bonusChips:0,games:0};return `${n}：順位 ${t.rankChips} / 祝儀 ${t.bonusChips} / 合計 ${t.rankChips+t.bonusChips}枚（${t.games}戦）`;}).join('\n');}catch{$('totals').textContent='保存データを読み取れません';}}
+function totals(){try{const d=JSON.parse(localStorage.getItem('jewel-offline-results-v1')||'{"totals":{}}');$('totals').textContent='累積成績（東風終了時に保存）\n'+names.map((n,i)=>{const t=d.totals[i]||{rankChips:0,bonusChips:0,games:0};return `${n}：順位 ${t.rankChips} / 祝儀 ${t.bonusChips} / 合計 ${t.rankChips+t.bonusChips}枚（${t.games}戦）`;}).join('\n');}catch{$('totals').textContent='保存データを読み取れません';}}
 function selected(){return [...document.querySelectorAll('#gem-options input:checked')].map(el=>el.value);}
 function validateSelection(){try{J.configure(selected());$('config-error').textContent='';for(const input of document.querySelectorAll('#gem-options input')){if(input.checked){input.disabled=false;continue;}try{J.configure([...selected(),input.value]);input.disabled=false;}catch{input.disabled=true;}}return true;}catch(e){$('config-error').textContent=e.message;return false;}}
 function setupOptions(){const groups={m5:'五萬',p5:'五筒',s5:'五索',pocchi:'ポッチ（最大3種類）'};for(const [base,title] of Object.entries(groups)){const f=document.createElement('fieldset'),legend=document.createElement('legend');legend.textContent=title;f.append(legend);const grid=document.createElement('div');grid.className='gem-grid';for(const g of J.CATALOG.filter(g=>base==='pocchi'?g.pocchi:g.base===base)){const label=document.createElement('label');label.className='gem-choice';const input=document.createElement('input');input.type='checkbox';input.value=g.id;input.checked=J.DEFAULT.includes(g.id);input.onchange=validateSelection;const text=document.createElement('span');text.textContent=g.name;const sub=document.createElement('small');sub.textContent=(g.han?g.han+'翻 / ':'')+(g.effect==='fixed'?'祝儀+'+g.chips+'枚':effectText[g.effect])+(g.pocchi?' / '+(g.id==='gold-pocchi'?'役ありテンパイ時':'リーチ後')+'のツモで万能':'');text.append(sub);label.append(input,text);grid.append(label);}f.append(grid);$('gem-options').append(f);}}
 function start(){const ids=selected();try{J.configure(ids);}catch(e){$('config-error').textContent=e.message;$('setup').showModal();return;}if(!finished&&!confirm('現在の対局を破棄して新しい対局を始めますか？'))return;if(game){game.stop();for(const p of game._players){p.decide=()=>{};p.onUpdate=()=>{};}}
- finished=false;pending=null;riichi=false;$('actions').replaceChildren();$('log').replaceChildren();$('result').textContent='';$('setup').close();const run=crypto.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random();session=run;
- human=new E.Player(choose,update);const players=[human,...[1,2,3].map(()=>new E.Player((o,r,msg,p)=>r(E.cpu(p,o))))];game=new E.Game(players,paipu=>{if(session!==run)return;finished=true;pending=null;$('actions').replaceChildren();renderHand();$('status').textContent='対局終了';const rows=E.settle(paipu);$('result').textContent=(paipu.cold?'55,000点コールド。':'終局。')+rows.slice().sort((a,b)=>a.rank-b.rank).map(r=>`${r.rank}着 ${names[r.id]} ${r.points}点 / 順位${r.rankChips}・祝儀${r.bonusChips}枚`).join(' ／ ');try{E.saveResult(localStorage,run,rows);totals();}catch(e){log('成績保存失敗：'+e.message);}},{gemSelection:ids});game.speed=1;game._model.player=names;game.kaiju(0);log('東風開始。解放役：'+game._rule.unlockedYaku+' / '+ids.map(id=>J.BY_ID[id].name).join('・'));}
+ winContinuation=null;$('win-confirm').close();finished=false;pending=null;riichi=false;liveChips=[0,0,0,0];renderLiveChips();$('actions').replaceChildren();$('log').replaceChildren();$('result').textContent='';$('setup').close();const run=crypto.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random();session=run;
+ human=new E.Player(choose,update);human.confirmWin=showWin;const players=[human,...[1,2,3].map(()=>new E.Player((o,r,msg,p)=>r(E.cpu(p,o))))];game=new E.Game(players,paipu=>{if(session!==run)return;finished=true;pending=null;liveChips=(paipu.bonusChips||liveChips).slice();renderLiveChips();$('actions').replaceChildren();renderHand();$('status').textContent='対局終了';const rows=E.settle(paipu);$('result').textContent=(paipu.cold?'55,000点コールド。':'終局。')+rows.slice().sort((a,b)=>a.rank-b.rank).map(r=>`${r.rank}着 ${names[r.id]} ${r.points}点 / 順位${r.rankChips}・祝儀${r.bonusChips}枚`).join(' ／ ');try{E.saveResult(localStorage,run,rows);totals();}catch(e){$('live-chip-state').textContent='成績の保存に失敗しました';log('成績保存失敗：'+e.message);}},{gemSelection:ids});game.speed=1;game._model.player=names;game.kaiju(0);log('東風開始。解放役：'+game._rule.unlockedYaku+' / '+ids.map(id=>J.BY_ID[id].name).join('・'));}
 $('new').onclick=start;$('apply-start').onclick=start;$('settings').onclick=()=>$('setup').showModal();$('default-gems').onclick=()=>{for(const el of document.querySelectorAll('#gem-options input'))el.checked=J.DEFAULT.includes(el.value);validateSelection();};
 $('export').onclick=()=>{const raw=localStorage.getItem('jewel-offline-results-v1')||'{}';if(globalThis.Android?.exportResults){Android.exportResults(raw);return;}const url=URL.createObjectURL(new Blob([raw],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='mahjong-jewel-results.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};setupOptions();validateSelection();totals();start();

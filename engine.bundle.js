@@ -3064,13 +3064,22 @@ function hule(shoupai, rongpai, param) {
     if (!rongpai && Jewel.wildcard(param.rule,shoupai)) {
         const drawn=shoupai._zimo;
         const base = shoupai.clone().dapai(drawn);
-        let best;
+        let best, bestChips = -Infinity;
         for (const suit of ['m','p','s','z']) for (let n=1;n<=(suit==='z'?7:9);n++) {
             if (base._bingpai[suit][n] >= 4) continue;
             const candidate = base.clone().zimo(suit+n);
             const rv = hule(candidate, null, {...param, pocchi: drawn});
-            if (rv && rv.hupai && (!best || rv.defen > best.defen)) {
+            if (!rv || !rv.hupai) continue;
+            // Keep the highest point value. On a point tie, choose the largest
+            // actual chip receipt, preserving the original physical Jewels.
+            const scored = {...rv, shoupai: shoupai.toString(), pocchiAs: suit+n,
+                winningTile: suit+n, baojia: null, indicators: param.baopai,
+                garnetUra: param.fubaopai || []};
+            const chips = Jewel.bonus(scored, 0, param.rule.unlockedYaku, param.rule);
+            if (!best || rv.defen > best.defen
+                || rv.defen === best.defen && chips > bestChips) {
                 best = {...rv, pocchiAs: suit+n, pocchi:drawn};
+                bestChips = chips;
             }
         }
         return best;

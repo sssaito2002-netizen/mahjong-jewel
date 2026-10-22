@@ -27,8 +27,9 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),{cre
   await b.locator('.complete-buttons button').first().click();await a.waitForSelector('#start-room:enabled');await a.locator('#start-room').click();
   await a.waitForSelector('#game-area:not([hidden])');assert.notEqual(current.matchId,firstMatch);assert.equal(current.phase,'playing');assert.deepEqual(errors,[]);
   console.log('Both players see terminal results and can ready the same room for a second match: OK');
-  const bad=await fetch(url+'/api/rooms/'+code+'/events',{headers:{Authorization:'Bearer bad'}});assert.equal(bad.status,400);
-  const cross=await fetch(url+'/api/rooms',{method:'POST',headers:{Origin:'https://attacker.example','Content-Type':'application/json'},body:'{"name":"Mallory"}'});assert.equal(cross.status,403);
+  const blocked=await fetch(url+'/api/rooms/'+code+'/events');assert.equal(blocked.status,401);
+  const bad=await a.request.get(url+'/api/rooms/'+code+'/events',{headers:{Authorization:'Bearer bad'}});assert.equal(bad.status(),400);
+  const cross=await a.request.post(url+'/api/rooms',{headers:{Origin:'https://attacker.example'},data:{name:'Mallory'}});assert.equal(cross.status(),403);
   console.log('Two isolated mobile browsers, room creation/join, gem sync, 2 humans + 2 CPUs, tile actions, reconnection, auth and same-origin checks: OK');
  }finally{await browser.close();rooms.close();server.closeAllConnections();await new Promise(r=>server.close(r));}
 })().catch(e=>{console.error(e);process.exit(1);});

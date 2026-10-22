@@ -94,7 +94,8 @@ module.exports = class Player {
             if (this.hulepai.find(p=> this.he.find(p))) this._neng_rong = false;
         }
         else {
-            let s = dapai.p[0], n = +dapai.p[1]||5;
+            let normalized=Majiang.Shoupai.normal_pai(dapai.p);
+            let s=normalized[0], n=+normalized[1];
             if (this.hulepai.find(p=> p == s+n)) this._neng_rong = false;
         }
     }
@@ -116,7 +117,8 @@ module.exports = class Player {
 
         this._diyizimo = false;
         if (gang.l != this._menfeng && ! gang.m.match(/^[mpsz]\d{4}$/)) {
-            let s = gang.m[0], n = +gang.m.slice(-1)||5;
+            let normalized=Majiang.Shoupai.normal_pai(gang.m[0]+gang.m.slice(-1));
+            let s=normalized[0], n=+normalized[1];
             if (this.hulepai.find(p=> p == s+n)) this._neng_rong = false;
         }
     }

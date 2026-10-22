@@ -1,7 +1,14 @@
 'use strict';
 const M = require('../vendor/majiang-core/lib');
 const PAYOUT = [50,25,-25,-50];
-function rule(extra={}) { return M.rule({'場数':1,'延長戦方式':0,'赤牌':{m:1,p:1,s:1},jewelBonus:true,...extra}); }
+const UNLOCK_YAKU = ['平和','断幺九','一盃口','三色同順','一気通貫','混全帯幺九','七対子','対々和','三暗刻','三色同刻','混老頭','小三元','混一色','純全帯幺九','二盃口','清一色','翻牌 白','翻牌 發','翻牌 中'];
+function rule(extra={}) {
+ const modes=extra.pocchiModes||[extra.pocchiMode||'amethyst-white'];
+ const allowed=['white','amethyst-white','gold','gane'];
+ if(!Array.isArray(modes)||modes.length>3||new Set(modes).size!==modes.length||modes.some(x=>!allowed.includes(x))||(modes.includes('white')&&modes.includes('amethyst-white')))throw Error('ポッチ構成が不正です');
+ return M.rule({'場数':1,'延長戦方式':0,'赤牌':{m:1,p:1,s:1},jewelBonus:true,fullJewel:true,...extra,
+  pocchiModes:modes.slice(),whitePocchi:modes.includes('white')||modes.includes('amethyst-white'),pocchiAmethyst:modes.includes('amethyst-white'),goldPocchi:modes.includes('gold'),ganePocchi:modes.includes('gane')});
+}
 function actions(p,msg) {
  const out=[]; const self=p._menfeng, hand=p.shoupai;
  if(!hand)return out;
@@ -69,12 +76,18 @@ class Player extends M.Player {
 
 }
 for(const type of ['kaiju','qipai','zimo','dapai','fulou','gang','hule','pingju','jieju'])Player.prototype['action_'+type]=function(){this.respond();};
-function bonus(h,points) {
+function indicatorNumber(p) {return p && p[0]!=='z' ? (+p[1]||5) : 0;}
+function garnetValue(indicators=[],ura=[]) {return Math.max(0,...indicators.map((p,i)=>indicatorNumber(p[0]==='z'?ura[i]:p)));}
+function bonus(h,points,unlockedYaku=null) {
  const text=h.shoupai, m=(text.match(/m[^psz,]*/g)||[]).join(''), p=(text.match(/p[^msz,]*/g)||[]).join(''), s=(text.match(/s[^mpz,]*/g)||[]).join('');
- const lapis=(m.match(/0/g)||[]).length, amethyst=(p.match(/0/g)||[]).length, tourmaline=(s.match(/0/g)||[]).length;
+ const lapis=(m.match(/0/g)||[]).length, amethyst=(p.match(/0/g)||[]).length+(h.pocchiAmethyst===false?0:((text.match(/z[^mps,]*/g)||[]).join('').match(/0/g)||[]).length), tourmaline=(s.match(/0/g)||[]).length;
  const usual=(h.hupai||[]).filter(y=>['一発','裏ドラ'].includes(y.name)).reduce((n,y)=>n+(+y.fanshu||0),0);
+ const honors=(text.match(/z[^mps,]*/g)||[]).join('');
+ const gold=(honors.match(/8/g)||[]).length*4;
+ const north=(honors.match(/9/g)||[]).length*Math.max(garnetValue(h.indicators,h.garnetUra),indicatorNumber(h.winningTile));
+ const unlocked=(h.hupai||[]).some(y=>y.name===unlockedYaku)?5:0;
  const digit=Math.max(...String(Math.floor(Math.max(0,points)/100)).slice(-3).split('').map(Number),0);
- return (usual+lapis*(h.fanshu||13)+amethyst+tourmaline*digit)*2**amethyst;
+ return (usual+unlocked+gold+north+lapis*(h.fanshu||13)+amethyst+tourmaline*digit)*2**amethyst;
 }
 function transfer(chips,winner,loser,n) {
  if(loser===null){for(let id=0;id<4;id++)if(id!==winner){chips[id]-=n;chips[winner]+=n;}}
@@ -82,13 +95,19 @@ function transfer(chips,winner,loser,n) {
 }
 class Game extends M.Game {
  constructor(players,done,extra={}) {
-  super(players,done,rule(extra),'Mahjong Jewel — Offline');
+  super(players,done,rule({unlockedYaku:UNLOCK_YAKU[Math.floor(Math.random()*UNLOCK_YAKU.length)],...extra}),'Mahjong Jewel — Offline');
   this.chips=[0,0,0,0];this.busted=new Set();this.bonusLog=[];
  }
  add_paipu(msg) {
   if(msg.hule){
    const h=msg.hule, ids=this.model.player_id, winner=ids[h.l], loser=h.baojia===null?null:ids[h.baojia];
-   const n=bonus(h,this.model.defen[winner]);transfer(this.chips,winner,loser,n);
+   h.pocchiAmethyst=this._rule.pocchiAmethyst;
+   h.indicators=this.model.shan.baopai;
+   h.garnetUra=this.model.shan.fubaopai || [];
+   h.winningTile=M.Shoupai.fromString(h.shoupai)._zimo;
+   h.unlockedYaku=this._rule.unlockedYaku;
+   h.unlockedChips=(h.hupai||[]).some(y=>y.name===h.unlockedYaku)?5:0;
+   const n=bonus(h,this.model.defen[winner],this._rule.unlockedYaku);transfer(this.chips,winner,loser,n);
    const victims=[];
    for(let seat=0;seat<4;seat++) {
     const id=ids[seat];
@@ -112,4 +131,4 @@ function saveResult(storage,id,results) {
  for(const r of results){const t=record.totals[r.id]||{rankChips:0,bonusChips:0,games:0};record.totals[r.id]={rankChips:t.rankChips+r.rankChips,bonusChips:t.bonusChips+r.bonusChips,games:t.games+1};}
  record.games.push({id,at:new Date().toISOString(),results});storage.setItem(key,JSON.stringify(record));return record;
 }
-module.exports={M,rule,actions,cpu,Player,Game,bonus,transfer,settle,saveResult};
+module.exports={M,UNLOCK_YAKU,indicatorNumber,garnetValue,rule,actions,cpu,Player,Game,bonus,transfer,settle,saveResult};

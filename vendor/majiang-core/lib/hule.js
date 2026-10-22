@@ -4,6 +4,7 @@
 "use strict";
 
 const Majiang = {
+    Shoupai: require('./shoupai'),
     Shan: require('./shan'),
     rule: require('./rule')
 };
@@ -57,7 +58,7 @@ function mianzi_all(shoupai) {
         zipai.push('z'+n+n+n);
     }
 
-    let fulou = shoupai._fulou.map(m => m.replace(/0/g,'5'));
+    let fulou = shoupai._fulou.map(m => Majiang.Shoupai.normal_pai(m));
 
     return shupai_all.map(shupai => shupai.concat(zipai).concat(fulou));
 }
@@ -89,7 +90,7 @@ function hule_mianzi_yiban(shoupai, hulepai) {
 
     for (let s of ['m','p','s','z']) {
         let bingpai = shoupai._bingpai[s];
-        for (let n = 1; n < bingpai.length; n++) {
+        for (let n = 1; n <= (s==='z'?7:9); n++) {
             if (bingpai[n] < 2) continue;
             bingpai[n] -= 2;
             let jiangpai = s+n+n;
@@ -113,7 +114,7 @@ function hule_mianzi_qidui(shoupai, hulepai) {
 
     for (let s of ['m','p','s','z']) {
         let bingpai = shoupai._bingpai[s];
-        for (let n = 1; n < bingpai.length; n++) {
+        for (let n = 1; n <= (s==='z'?7:9); n++) {
             if (bingpai[n] == 0) continue;
             if (bingpai[n] == 2) {
                 let m = (s+n == hulepai.slice(0,2))
@@ -188,7 +189,7 @@ function hule_mianzi(shoupai, rongpai) {
     if (rongpai) new_shoupai.zimo(rongpai);
 
     if (! new_shoupai._zimo || new_shoupai._zimo.length > 2) return [];
-    let hulepai = (rongpai || new_shoupai._zimo + '_').replace(/0/,'5');
+    let hulepai = Majiang.Shoupai.normal_pai(rongpai || new_shoupai._zimo + '_');
 
     return [].concat(hule_mianzi_yiban(new_shoupai, hulepai))
              .concat(hule_mianzi_qidui(new_shoupai, hulepai))
@@ -567,7 +568,7 @@ function get_post_hupai(shoupai, rongpai, baopai, fubaopai) {
         const regexp = new RegExp(p[1],'g');
         for (let m of suitstr) {
             if (m[0] != p[0]) continue;
-            m = m.replace(/0/,'5');
+            m = Majiang.Shoupai.normal_pai(m);
             let nn = m.match(regexp);
             if (nn) n_baopai += nn.length;
         }
@@ -585,7 +586,7 @@ function get_post_hupai(shoupai, rongpai, baopai, fubaopai) {
         const regexp = new RegExp(p[1],'g');
         for (let m of suitstr) {
             if (m[0] != p[0]) continue;
-            m = m.replace(/0/,'5');
+            m = Majiang.Shoupai.normal_pai(m);
             let nn = m.match(regexp);
             if (nn) n_fubaopai += nn.length;
         }
@@ -681,6 +682,23 @@ function get_defen(fu, hupai, rongpai, param) {
 }
 
 function hule(shoupai, rongpai, param) {
+    // A drawn pocchi is a wildcard only after riichi. Evaluate every legal
+    // replacement and score the best, preserving the physical Jewel bonus.
+    if (!rongpai && ((param.rule.whitePocchi && shoupai.lizhi && shoupai._zimo === 'z0') || (param.rule.goldPocchi && shoupai._zimo === 'z8') || (param.rule.ganePocchi && shoupai.lizhi && shoupai._zimo === 'z9'))) {
+        const drawn=shoupai._zimo;
+        const base = shoupai.clone().dapai(drawn);
+        let best;
+        for (const suit of ['m','p','s','z']) for (let n=1;n<=(suit==='z'?7:9);n++) {
+            if (base._bingpai[suit][n] >= 4) continue;
+            const candidate = base.clone().zimo(suit+n);
+            const rv = hule(candidate, null, {...param, pocchi: drawn});
+            if (rv && rv.hupai && (!best || rv.defen > best.defen)) {
+                best = {...rv, pocchiAs: suit+n, pocchi:drawn};
+            }
+        }
+        return best;
+    }
+
 
     if (rongpai) {
         if (! rongpai.match(/[\+\=\-]$/)) throw new Error(rongpai);
@@ -692,11 +710,26 @@ function hule(shoupai, rongpai, param) {
     let pre_hupai  = get_pre_hupai(param.hupai);
     let post_hupai = get_post_hupai(shoupai, rongpai,
                                     param.baopai, param.fubaopai);
+    if (param.pocchi === 'z0' && param.rule.pocchiAmethyst) post_hupai.push({name:'アメジストポッチ', fanshu:2});
+    const physical = rongpai ? shoupai.clone().zimo(rongpai) : shoupai;
+    const whiteCount = ((physical.toString().match(/z[^mps,]*/g)||[]).join('').match(/0/g)||[]).length;
+    if (!param.rule.pocchiAmethyst && whiteCount) {
+        post_hupai = post_hupai.map(y => y.name === '赤ドラ' ? {...y,fanshu:y.fanshu-whiteCount} : y).filter(y=>y.fanshu>0);
+    }
+    if(['z8','z9'].includes(param.pocchi)) post_hupai.push({name:param.pocchi==='z8'?'ゴールド發ポッチ':'ガネクリ北ポッチ',fanshu:1});
     // Local offline variant: optional, explicit scoring extension.
     if (param.rule.jewelBonus) {
         const hand = rongpai ? shoupai.clone().zimo(rongpai) : shoupai;
-        const n = (hand.toString().match(/0/g) || []).length;
+        const n = (hand.toString().match(/0/g) || []).length - (param.rule.pocchiAmethyst ? 0 : whiteCount) + ((hand.toString().match(/z[^mps,]*/g)||[]).join('').match(/[89]/g)||[]).length;
         if (n) post_hupai.push({ name: 'Jewel', fanshu: n });
+    }
+
+    if(param.rule.fullJewel) {
+        const text=physical.toString();
+        const allSuited=['m','p','s'].every(s=>(text.match(new RegExp(s+'[^mpsz,]*','g'))||[]).some(part=>part.includes('0')));
+        const markers=new Set(((text.match(/z[^mps,]*/g)||[]).join('').match(/[089]/g)||[]));
+        if(param.pocchi)markers.add(param.pocchi[1]);
+        if(allSuited&&markers.size>=2)pre_hupai=[{name:'フルジュエル',fanshu:'*'},...pre_hupai.filter(y=>typeof y.fanshu==='string')];
     }
 
     for (let mianzi of hule_mianzi(shoupai, rongpai)) {

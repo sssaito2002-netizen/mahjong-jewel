@@ -3,7 +3,14 @@
 'use strict';
 const M = require("vendor/majiang-core/lib/index.js");
 const PAYOUT = [50,25,-25,-50];
-function rule(extra={}) { return M.rule({'場数':1,'延長戦方式':0,'赤牌':{m:1,p:1,s:1},jewelBonus:true,...extra}); }
+const UNLOCK_YAKU = ['平和','断幺九','一盃口','三色同順','一気通貫','混全帯幺九','七対子','対々和','三暗刻','三色同刻','混老頭','小三元','混一色','純全帯幺九','二盃口','清一色','翻牌 白','翻牌 發','翻牌 中'];
+function rule(extra={}) {
+ const modes=extra.pocchiModes||[extra.pocchiMode||'amethyst-white'];
+ const allowed=['white','amethyst-white','gold','gane'];
+ if(!Array.isArray(modes)||modes.length>3||new Set(modes).size!==modes.length||modes.some(x=>!allowed.includes(x))||(modes.includes('white')&&modes.includes('amethyst-white')))throw Error('ポッチ構成が不正です');
+ return M.rule({'場数':1,'延長戦方式':0,'赤牌':{m:1,p:1,s:1},jewelBonus:true,fullJewel:true,...extra,
+  pocchiModes:modes.slice(),whitePocchi:modes.includes('white')||modes.includes('amethyst-white'),pocchiAmethyst:modes.includes('amethyst-white'),goldPocchi:modes.includes('gold'),ganePocchi:modes.includes('gane')});
+}
 function actions(p,msg) {
  const out=[]; const self=p._menfeng, hand=p.shoupai;
  if(!hand)return out;
@@ -71,12 +78,18 @@ class Player extends M.Player {
 
 }
 for(const type of ['kaiju','qipai','zimo','dapai','fulou','gang','hule','pingju','jieju'])Player.prototype['action_'+type]=function(){this.respond();};
-function bonus(h,points) {
+function indicatorNumber(p) {return p && p[0]!=='z' ? (+p[1]||5) : 0;}
+function garnetValue(indicators=[],ura=[]) {return Math.max(0,...indicators.map((p,i)=>indicatorNumber(p[0]==='z'?ura[i]:p)));}
+function bonus(h,points,unlockedYaku=null) {
  const text=h.shoupai, m=(text.match(/m[^psz,]*/g)||[]).join(''), p=(text.match(/p[^msz,]*/g)||[]).join(''), s=(text.match(/s[^mpz,]*/g)||[]).join('');
- const lapis=(m.match(/0/g)||[]).length, amethyst=(p.match(/0/g)||[]).length, tourmaline=(s.match(/0/g)||[]).length;
+ const lapis=(m.match(/0/g)||[]).length, amethyst=(p.match(/0/g)||[]).length+(h.pocchiAmethyst===false?0:((text.match(/z[^mps,]*/g)||[]).join('').match(/0/g)||[]).length), tourmaline=(s.match(/0/g)||[]).length;
  const usual=(h.hupai||[]).filter(y=>['一発','裏ドラ'].includes(y.name)).reduce((n,y)=>n+(+y.fanshu||0),0);
+ const honors=(text.match(/z[^mps,]*/g)||[]).join('');
+ const gold=(honors.match(/8/g)||[]).length*4;
+ const north=(honors.match(/9/g)||[]).length*Math.max(garnetValue(h.indicators,h.garnetUra),indicatorNumber(h.winningTile));
+ const unlocked=(h.hupai||[]).some(y=>y.name===unlockedYaku)?5:0;
  const digit=Math.max(...String(Math.floor(Math.max(0,points)/100)).slice(-3).split('').map(Number),0);
- return (usual+lapis*(h.fanshu||13)+amethyst+tourmaline*digit)*2**amethyst;
+ return (usual+unlocked+gold+north+lapis*(h.fanshu||13)+amethyst+tourmaline*digit)*2**amethyst;
 }
 function transfer(chips,winner,loser,n) {
  if(loser===null){for(let id=0;id<4;id++)if(id!==winner){chips[id]-=n;chips[winner]+=n;}}
@@ -84,13 +97,19 @@ function transfer(chips,winner,loser,n) {
 }
 class Game extends M.Game {
  constructor(players,done,extra={}) {
-  super(players,done,rule(extra),'Mahjong Jewel — Offline');
+  super(players,done,rule({unlockedYaku:UNLOCK_YAKU[Math.floor(Math.random()*UNLOCK_YAKU.length)],...extra}),'Mahjong Jewel — Offline');
   this.chips=[0,0,0,0];this.busted=new Set();this.bonusLog=[];
  }
  add_paipu(msg) {
   if(msg.hule){
    const h=msg.hule, ids=this.model.player_id, winner=ids[h.l], loser=h.baojia===null?null:ids[h.baojia];
-   const n=bonus(h,this.model.defen[winner]);transfer(this.chips,winner,loser,n);
+   h.pocchiAmethyst=this._rule.pocchiAmethyst;
+   h.indicators=this.model.shan.baopai;
+   h.garnetUra=this.model.shan.fubaopai || [];
+   h.winningTile=M.Shoupai.fromString(h.shoupai)._zimo;
+   h.unlockedYaku=this._rule.unlockedYaku;
+   h.unlockedChips=(h.hupai||[]).some(y=>y.name===h.unlockedYaku)?5:0;
+   const n=bonus(h,this.model.defen[winner],this._rule.unlockedYaku);transfer(this.chips,winner,loser,n);
    const victims=[];
    for(let seat=0;seat<4;seat++) {
     const id=ids[seat];
@@ -114,7 +133,7 @@ function saveResult(storage,id,results) {
  for(const r of results){const t=record.totals[r.id]||{rankChips:0,bonusChips:0,games:0};record.totals[r.id]={rankChips:t.rankChips+r.rankChips,bonusChips:t.bonusChips+r.bonusChips,games:t.games+1};}
  record.games.push({id,at:new Date().toISOString(),results});storage.setItem(key,JSON.stringify(record));return record;
 }
-module.exports={M,rule,actions,cpu,Player,Game,bonus,transfer,settle,saveResult};
+module.exports={M,UNLOCK_YAKU,indicatorNumber,garnetValue,rule,actions,cpu,Player,Game,bonus,transfer,settle,saveResult};
 
 },
 "vendor/majiang-core/lib/index.js":function(module,exports,require){
@@ -213,16 +232,24 @@ module.exports = function(param = {}) {
 
 module.exports = class Shoupai {
 
+    static normal_pai(p) {
+        return p[0] === 'z' ? p.replace(/[089]/g, n=>({0:'5',8:'6',9:'4'}[n])) : p.replace(/0/g,'5');
+    }
+
     static valid_pai(p) {
-        if (p.match(/^(?:[mps]\d|z[1-7])_?\*?[\+\=\-]?$/)) return p;
+        if (p.match(/^(?:[mps]\d|z[0-9])_?\*?[\+\=\-]?$/)) return p;
     }
 
     static valid_mianzi(m) {
 
-        if (m.match(/^z.*[089]/)) return;
+        if (m[0] === 'z') {
+            const h = Shoupai.normal_pai(m);
+            if (/^z([1-7])\1\1[+=-]\1?$/.test(h) || /^z([1-7])\1\1\1[+=-]?$/.test(h)) return m;
+            return;
+        }
         let h = m.replace(/0/g,'5');
         if (h.match(/^[mpsz](\d)\1\1[\+\=\-]\1?$/)) {
-            return m.replace(/([mps])05/,'$1'+'50');
+            return m.replace(/([mpsz])05/,'$1'+'50');
         }
         else if (h.match(/^[mpsz](\d)\1\1\1[\+\=\-]?$/)) {
             return m[0]+m.match(/\d(?![\+\=\-])/g).sort().reverse().join('')
@@ -245,7 +272,7 @@ module.exports = class Shoupai {
             m: [0,0,0,0,0,0,0,0,0,0],
             p: [0,0,0,0,0,0,0,0,0,0],
             s: [0,0,0,0,0,0,0,0,0,0],
-            z: [0,0,0,0,0,0,0,0],
+            z: [0,0,0,0,0,0,0,0,0,0],
         };
         this._fulou = [];
         this._zimo  = null;
@@ -258,9 +285,10 @@ module.exports = class Shoupai {
             }
             if (! (p = Shoupai.valid_pai(p)))       throw new Error(p);
             let s = p[0], n = +p[1];
-            if (this._bingpai[s][n] == 4)           throw new Error([this, p]);
+            const base = +Shoupai.normal_pai(s+n)[1];
+            if (this._bingpai[s][base] >= 4) throw new Error([this,p]);
             this._bingpai[s][n]++;
-            if (s != 'z' && n == 0) this._bingpai[s][5]++;
+            if (base !== n) this._bingpai[s][base]++;
         }
     }
 
@@ -273,7 +301,7 @@ module.exports = class Shoupai {
         for (let suitstr of bingpai.match(/[mpsz]\d+_*/g) || []) {
             let s = suitstr[0];
             for (let n of suitstr.match(/\d/g)) {
-                if (s == 'z' && (n < 1 || 7 < n)) continue;
+                if (s == 'z' && (n < 0 || 9 < n)) continue;
                 qipai.push(s+n);
             }
             qipai = qipai.concat(suitstr.match(/_/g)||[]);
@@ -305,17 +333,13 @@ module.exports = class Shoupai {
         for (let s of ['m','p','s','z']) {
             let suitstr = s;
             let bingpai = this._bingpai[s];
-            let n_hongpai = s == 'z' ? 0 : bingpai[0];
-            for (let n = 1; n < bingpai.length; n++) {
-                let n_pai = bingpai[n];
-                if (this._zimo) {
-                    if (s+n == this._zimo)           { n_pai--;             }
-                    if (n == 5 && s+0 == this._zimo) { n_pai--; n_hongpai-- }
-                }
-                for (let i = 0; i < n_pai; i++) {
-                    if (n ==5 && n_hongpai > 0) { suitstr += 0; n_hongpai-- }
-                    else                        { suitstr += n;             }
-                }
+            for (let n=1;n<=(s==='z'?7:9);n++) {
+                const marker = s==='z' ? ({4:9,5:0,6:8}[n]) : n===5 ? 0 : undefined;
+                let special = marker === undefined ? 0 : bingpai[marker];
+                let total = bingpai[n];
+                if (this._zimo === s+n) total--;
+                if (marker !== undefined && this._zimo === s+marker) {total--;special--;}
+                suitstr += String(marker).repeat(Math.max(0,special)) + String(n).repeat(Math.max(0,total-special));
             }
             if (suitstr.length > 1) paistr += suitstr;
         }
@@ -366,14 +390,16 @@ module.exports = class Shoupai {
     }
 
     decrease(s, n) {
-        let bingpai = this._bingpai[s]; n = + n;
-        if (bingpai[n] == 0 || n == 5 && bingpai[0] == bingpai[5]) {
-            if (this._bingpai._ == 0)               throw new Error([this,s+n]);
+        let bingpai = this._bingpai[s]; n = +n;
+        const base = +Shoupai.normal_pai(s+n)[1];
+        const marker = s==='z' ? ({4:9,5:0,6:8}[base]) : base===5 ? 0 : undefined;
+        const available = n===base ? bingpai[base]-(marker===undefined?0:bingpai[marker]) : bingpai[n];
+        if (!available) {
+            if (!this._bingpai._) throw new Error([this,s+n]);
             this._bingpai._--;
-        }
-        else {
+        } else {
             bingpai[n]--;
-            if (n == 0) bingpai[5]--;
+            if (base!==n) bingpai[base]--;
         }
     }
 
@@ -387,12 +413,10 @@ module.exports = class Shoupai {
             if (! Shoupai.valid_pai(p))             throw new Error(p);
             let s = p[0], n = +p[1];
             let bingpai = this._bingpai[s];
-            if (bingpai[n] == 4)                    throw new Error([this, p]);
+            const base = +Shoupai.normal_pai(s+n)[1];
+            if (bingpai[base] >= 4) throw new Error([this,p]);
             bingpai[n]++;
-            if (n == 0) {
-                if (bingpai[5] == 4)                throw new Error([this, p]);
-                bingpai[5]++;
-            }
+            if (base !== n) bingpai[base]++;
             this._zimo = s+n;
         }
         return this;
@@ -471,11 +495,16 @@ module.exports = class Shoupai {
         if (! this._lizhi) {
             for (let s of ['m','p','s','z']) {
                 let bingpai = this._bingpai[s];
-                for (let n = 1; n < bingpai.length; n++) {
+                for (let n = 1; n <= (s==='z'?7:9); n++) {
                     if (bingpai[n] == 0)  continue;
                     if (deny[s+n])        continue;
                     if (s+n == this._zimo && bingpai[n] == 1) continue;
-                    if (s == 'z' || n != 5)          dapai.push(s+n);
+                    if (s==='z' && [4,5,6].includes(n)) {
+                        const marker={4:9,5:0,6:8}[n];
+                        if (bingpai[marker]>0 && (this._zimo!==s+marker || bingpai[marker]>1)) dapai.push(s+marker);
+                        if (bingpai[n]>bingpai[marker]) dapai.push(s+n);
+                    }
+                    else if (n != 5) dapai.push(s+n);
                     else {
                         if (bingpai[0] > 0
                             && s+0 != this._zimo || bingpai[0] > 1)
@@ -544,6 +573,14 @@ module.exports = class Shoupai {
         if (! d)                                        throw new Error(p);
         if (this._lizhi) return mianzi;
 
+        if(s==='z') {
+            const base=+Shoupai.normal_pai(p)[1], marker={4:9,5:0,6:8}[base], b=this._bingpai.z;
+            const special=marker===undefined?0:b[marker], normal=b[base]-special;
+            for(let k=0;k<=2;k++) if(k<=special && 2-k<=normal)
+                mianzi.push('z'+String(base).repeat(2-k)+String(marker).repeat(k)+p[1]+d);
+            return mianzi;
+        }
+
         let bingpai = this._bingpai[s];
         if (bingpai[n] >= 2) {
             if (n == 5 && bingpai[0] >= 2)  mianzi.push(s+'00'+p[1]+d);
@@ -558,6 +595,17 @@ module.exports = class Shoupai {
     get_gang_mianzi(p) {
 
         let mianzi = [];
+        const honorGang=(base,called)=>{
+            const b=this._bingpai.z, marker={4:9,5:0,6:8}[base], special=marker===undefined?0:b[marker];
+            return 'z'+String(base).repeat(b[base]-special)+String(marker).repeat(special)+(called||'');
+        };
+        if(p && p[0]==='z') {
+            if(this._zimo)return null;
+            if(this._lizhi)return [];
+            const base=+Shoupai.normal_pai(p)[1];
+            return this._bingpai.z[base]===3 ? [honorGang(base,p.slice(1))] : [];
+        }
+
         if (p) {
             if (this._zimo) return null;
             if (! Shoupai.valid_pai(p))                 throw new Error(p);
@@ -576,12 +624,21 @@ module.exports = class Shoupai {
         else {
             if (! this._zimo) return null;
             if (this._zimo.length > 2) return null;
-            let p = this._zimo.replace(/0/,'5');
+            let p = Shoupai.normal_pai(this._zimo);
 
             for (let s of ['m','p','s','z']) {
                 let bingpai = this._bingpai[s];
-                for (let n = 1; n < bingpai.length; n++) {
+                for (let n = 1; n <= (s==='z'?7:9); n++) {
                     if (bingpai[n] == 0) continue;
+                    if(s==='z') {
+                        if(bingpai[n]===4 && (!this._lizhi || p==='z'+n)) mianzi.push(honorGang(n));
+                        if(!this._lizhi) for(const m of this._fulou) if(Shoupai.normal_pai(m).slice(0,4)==='z'+String(n).repeat(3)) {
+                            const marker={4:9,5:0,6:8}[n], special=marker===undefined?0:bingpai[marker];
+                            if(bingpai[n]>special)mianzi.push(m+n);
+                            if(special)mianzi.push(m+marker);
+                        }
+                        continue;
+                    }
                     if (bingpai[n] == 4) {
                         if (this._lizhi && s+n != p) continue;
                         if (n == 5) mianzi.push(s + '5'.repeat(4 - bingpai[0])
@@ -629,10 +686,14 @@ module.exports = class Shan {
         let hongpai = rule['赤牌'];
 
         let pai = [];
+        let whitePocchi = rule.whitePocchi ? 1 : 0;
         for (let s of ['m','p','s','z']) {
             for (let n = 1; n <= (s == 'z' ? 7 : 9); n++) {
                 for (let i = 0; i < 4; i++) {
-                    if (n == 5 && i < hongpai[s]) pai.push(s+0);
+                    if (s == 'z' && n == 6 && i === 0 && rule.goldPocchi) pai.push('z8');
+                    else if (s == 'z' && n == 4 && i === 0 && rule.ganePocchi) pai.push('z9');
+                    else if (s == 'z' && n == 5 && i < whitePocchi) pai.push('z0');
+                    else if (n == 5 && i < hongpai[s]) pai.push(s+0);
                     else                          pai.push(s+n);
                 }
             }
@@ -709,7 +770,7 @@ module.exports = class He {
     dapai(p) {
         if (! Majiang.Shoupai.valid_pai(p))         throw new Error(p);
         this._pai.push(p.replace(/[\+\=\-]$/,''));
-        this._find[p[0]+(+p[1]||5)] = true;
+        this._find[Majiang.Shoupai.normal_pai(p).slice(0,2)] = true;
         return this;
     }
 
@@ -724,7 +785,7 @@ module.exports = class He {
     }
 
     find(p) {
-        return this._find[p[0]+(+p[1]||5)];
+        return this._find[Majiang.Shoupai.normal_pai(p).slice(0,2)];
     }
 }
 
@@ -1389,6 +1450,8 @@ module.exports = class Game {
                                     : shoupai.toString(),
                 baojia:     rongpai ? model.lunban : null,
                 fubaopai:   fubaopai,
+                pocchiAs:   hule.pocchiAs,
+                pocchi:     hule.pocchi,
                 fu:         hule.fu,
                 fanshu:     hule.fanshu,
                 damanguan:  hule.damanguan,
@@ -1708,7 +1771,7 @@ module.exports = class Game {
             let l = (model.lunban + i) % 4;
             let reply = this.get_reply(l);
             if (reply.fulou) {
-                let m = reply.fulou.replace(/0/g,'5');
+                let m = Majiang.Shoupai.normal_pai(reply.fulou);
                 if (m.match(/^[mpsz](\d)\1\1\1/)) {
                     if (this.get_gang_mianzi(l).find(m => m == reply.fulou)) {
                         this.say('gang', l);
@@ -1985,6 +2048,13 @@ module.exports = class Game {
 
         if (p && ! neng_rong) return false;
 
+        if (!p && ((rule.whitePocchi && shoupai.lizhi && shoupai._zimo === 'z0') || (rule.goldPocchi && shoupai._zimo === 'z8') || (rule.ganePocchi && shoupai.lizhi && shoupai._zimo === 'z9'))) {
+            const rv = Majiang.Util.hule(shoupai, null, {
+                rule, zhuangfeng, menfeng, hupai:{lizhi:shoupai.lizhi?1:0}, baopai:[],
+                jicun:{changbang:0,lizhibang:0}
+            });
+            return !!(rv && rv.hupai);
+        }
         let new_shoupai = shoupai.clone();
         if (p) new_shoupai.zimo(p);
         if (Majiang.Util.xiangting(new_shoupai) != -1) return false;
@@ -2140,7 +2210,7 @@ function xiangting_yiban(shoupai) {
 
     for (let s of ['m','p','s','z']) {
         let bingpai = shoupai._bingpai[s];
-        for (let n = 1; n < bingpai.length; n++) {
+        for (let n = 1; n <= (s==='z'?7:9); n++) {
             if (bingpai[n] >= 2) {
                 bingpai[n] -= 2;
                 let n_xiangting = mianzi_all(shoupai, true);
@@ -2182,7 +2252,7 @@ function xiangting_qidui(shoupai) {
 
     for (let s of ['m','p','s','z']) {
         let bingpai = shoupai._bingpai[s];
-        for (let n = 1; n < bingpai.length; n++) {
+        for (let n = 1; n <= (s==='z'?7:9); n++) {
             if      (bingpai[n] >= 2) n_duizi++;
             else if (bingpai[n] == 1) n_guli++;
         }
@@ -2210,7 +2280,7 @@ function tingpai(shoupai, f_xiangting = xiangting) {
     let n_xiangting = f_xiangting(shoupai);
     for (let s of ['m','p','s','z']) {
         let bingpai = shoupai._bingpai[s];
-        for (let n = 1; n < bingpai.length; n++) {
+        for (let n = 1; n <= (s==='z'?7:9); n++) {
             if (bingpai[n] >= 4) continue;
             bingpai[n]++;
             if (f_xiangting(shoupai) < n_xiangting) pai.push(s+n);
@@ -2237,6 +2307,7 @@ module.exports = {
 "use strict";
 
 const Majiang = {
+    Shoupai: require("vendor/majiang-core/lib/shoupai.js"),
     Shan: require("vendor/majiang-core/lib/shan.js"),
     rule: require("vendor/majiang-core/lib/rule.js")
 };
@@ -2290,7 +2361,7 @@ function mianzi_all(shoupai) {
         zipai.push('z'+n+n+n);
     }
 
-    let fulou = shoupai._fulou.map(m => m.replace(/0/g,'5'));
+    let fulou = shoupai._fulou.map(m => Majiang.Shoupai.normal_pai(m));
 
     return shupai_all.map(shupai => shupai.concat(zipai).concat(fulou));
 }
@@ -2322,7 +2393,7 @@ function hule_mianzi_yiban(shoupai, hulepai) {
 
     for (let s of ['m','p','s','z']) {
         let bingpai = shoupai._bingpai[s];
-        for (let n = 1; n < bingpai.length; n++) {
+        for (let n = 1; n <= (s==='z'?7:9); n++) {
             if (bingpai[n] < 2) continue;
             bingpai[n] -= 2;
             let jiangpai = s+n+n;
@@ -2346,7 +2417,7 @@ function hule_mianzi_qidui(shoupai, hulepai) {
 
     for (let s of ['m','p','s','z']) {
         let bingpai = shoupai._bingpai[s];
-        for (let n = 1; n < bingpai.length; n++) {
+        for (let n = 1; n <= (s==='z'?7:9); n++) {
             if (bingpai[n] == 0) continue;
             if (bingpai[n] == 2) {
                 let m = (s+n == hulepai.slice(0,2))
@@ -2421,7 +2492,7 @@ function hule_mianzi(shoupai, rongpai) {
     if (rongpai) new_shoupai.zimo(rongpai);
 
     if (! new_shoupai._zimo || new_shoupai._zimo.length > 2) return [];
-    let hulepai = (rongpai || new_shoupai._zimo + '_').replace(/0/,'5');
+    let hulepai = Majiang.Shoupai.normal_pai(rongpai || new_shoupai._zimo + '_');
 
     return [].concat(hule_mianzi_yiban(new_shoupai, hulepai))
              .concat(hule_mianzi_qidui(new_shoupai, hulepai))
@@ -2800,7 +2871,7 @@ function get_post_hupai(shoupai, rongpai, baopai, fubaopai) {
         const regexp = new RegExp(p[1],'g');
         for (let m of suitstr) {
             if (m[0] != p[0]) continue;
-            m = m.replace(/0/,'5');
+            m = Majiang.Shoupai.normal_pai(m);
             let nn = m.match(regexp);
             if (nn) n_baopai += nn.length;
         }
@@ -2818,7 +2889,7 @@ function get_post_hupai(shoupai, rongpai, baopai, fubaopai) {
         const regexp = new RegExp(p[1],'g');
         for (let m of suitstr) {
             if (m[0] != p[0]) continue;
-            m = m.replace(/0/,'5');
+            m = Majiang.Shoupai.normal_pai(m);
             let nn = m.match(regexp);
             if (nn) n_fubaopai += nn.length;
         }
@@ -2914,6 +2985,23 @@ function get_defen(fu, hupai, rongpai, param) {
 }
 
 function hule(shoupai, rongpai, param) {
+    // A drawn pocchi is a wildcard only after riichi. Evaluate every legal
+    // replacement and score the best, preserving the physical Jewel bonus.
+    if (!rongpai && ((param.rule.whitePocchi && shoupai.lizhi && shoupai._zimo === 'z0') || (param.rule.goldPocchi && shoupai._zimo === 'z8') || (param.rule.ganePocchi && shoupai.lizhi && shoupai._zimo === 'z9'))) {
+        const drawn=shoupai._zimo;
+        const base = shoupai.clone().dapai(drawn);
+        let best;
+        for (const suit of ['m','p','s','z']) for (let n=1;n<=(suit==='z'?7:9);n++) {
+            if (base._bingpai[suit][n] >= 4) continue;
+            const candidate = base.clone().zimo(suit+n);
+            const rv = hule(candidate, null, {...param, pocchi: drawn});
+            if (rv && rv.hupai && (!best || rv.defen > best.defen)) {
+                best = {...rv, pocchiAs: suit+n, pocchi:drawn};
+            }
+        }
+        return best;
+    }
+
 
     if (rongpai) {
         if (! rongpai.match(/[\+\=\-]$/)) throw new Error(rongpai);
@@ -2925,11 +3013,26 @@ function hule(shoupai, rongpai, param) {
     let pre_hupai  = get_pre_hupai(param.hupai);
     let post_hupai = get_post_hupai(shoupai, rongpai,
                                     param.baopai, param.fubaopai);
+    if (param.pocchi === 'z0' && param.rule.pocchiAmethyst) post_hupai.push({name:'アメジストポッチ', fanshu:2});
+    const physical = rongpai ? shoupai.clone().zimo(rongpai) : shoupai;
+    const whiteCount = ((physical.toString().match(/z[^mps,]*/g)||[]).join('').match(/0/g)||[]).length;
+    if (!param.rule.pocchiAmethyst && whiteCount) {
+        post_hupai = post_hupai.map(y => y.name === '赤ドラ' ? {...y,fanshu:y.fanshu-whiteCount} : y).filter(y=>y.fanshu>0);
+    }
+    if(['z8','z9'].includes(param.pocchi)) post_hupai.push({name:param.pocchi==='z8'?'ゴールド發ポッチ':'ガネクリ北ポッチ',fanshu:1});
     // Local offline variant: optional, explicit scoring extension.
     if (param.rule.jewelBonus) {
         const hand = rongpai ? shoupai.clone().zimo(rongpai) : shoupai;
-        const n = (hand.toString().match(/0/g) || []).length;
+        const n = (hand.toString().match(/0/g) || []).length - (param.rule.pocchiAmethyst ? 0 : whiteCount) + ((hand.toString().match(/z[^mps,]*/g)||[]).join('').match(/[89]/g)||[]).length;
         if (n) post_hupai.push({ name: 'Jewel', fanshu: n });
+    }
+
+    if(param.rule.fullJewel) {
+        const text=physical.toString();
+        const allSuited=['m','p','s'].every(s=>(text.match(new RegExp(s+'[^mpsz,]*','g'))||[]).some(part=>part.includes('0')));
+        const markers=new Set(((text.match(/z[^mps,]*/g)||[]).join('').match(/[089]/g)||[]));
+        if(param.pocchi)markers.add(param.pocchi[1]);
+        if(allSuited&&markers.size>=2)pre_hupai=[{name:'フルジュエル',fanshu:'*'},...pre_hupai.filter(y=>typeof y.fanshu==='string')];
     }
 
     for (let mianzi of hule_mianzi(shoupai, rongpai)) {
@@ -3078,7 +3181,8 @@ module.exports = class Player {
             if (this.hulepai.find(p=> this.he.find(p))) this._neng_rong = false;
         }
         else {
-            let s = dapai.p[0], n = +dapai.p[1]||5;
+            let normalized=Majiang.Shoupai.normal_pai(dapai.p);
+            let s=normalized[0], n=+normalized[1];
             if (this.hulepai.find(p=> p == s+n)) this._neng_rong = false;
         }
     }
@@ -3100,7 +3204,8 @@ module.exports = class Player {
 
         this._diyizimo = false;
         if (gang.l != this._menfeng && ! gang.m.match(/^[mpsz]\d{4}$/)) {
-            let s = gang.m[0], n = +gang.m.slice(-1)||5;
+            let normalized=Majiang.Shoupai.normal_pai(gang.m[0]+gang.m.slice(-1));
+            let s=normalized[0], n=+normalized[1];
             if (this.hulepai.find(p=> p == s+n)) this._neng_rong = false;
         }
     }

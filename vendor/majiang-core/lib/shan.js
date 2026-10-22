@@ -20,10 +20,14 @@ module.exports = class Shan {
         let hongpai = rule['赤牌'];
 
         let pai = [];
+        let whitePocchi = rule.whitePocchi ? 1 : 0;
         for (let s of ['m','p','s','z']) {
             for (let n = 1; n <= (s == 'z' ? 7 : 9); n++) {
                 for (let i = 0; i < 4; i++) {
-                    if (n == 5 && i < hongpai[s]) pai.push(s+0);
+                    if (s == 'z' && n == 6 && i === 0 && rule.goldPocchi) pai.push('z8');
+                    else if (s == 'z' && n == 4 && i === 0 && rule.ganePocchi) pai.push('z9');
+                    else if (s == 'z' && n == 5 && i < whitePocchi) pai.push('z0');
+                    else if (n == 5 && i < hongpai[s]) pai.push(s+0);
                     else                          pai.push(s+n);
                 }
             }

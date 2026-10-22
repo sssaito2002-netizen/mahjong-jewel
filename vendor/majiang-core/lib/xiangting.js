@@ -104,7 +104,7 @@ function xiangting_yiban(shoupai) {
 
     for (let s of ['m','p','s','z']) {
         let bingpai = shoupai._bingpai[s];
-        for (let n = 1; n < bingpai.length; n++) {
+        for (let n = 1; n <= (s==='z'?7:9); n++) {
             if (bingpai[n] >= 2) {
                 bingpai[n] -= 2;
                 let n_xiangting = mianzi_all(shoupai, true);
@@ -146,7 +146,7 @@ function xiangting_qidui(shoupai) {
 
     for (let s of ['m','p','s','z']) {
         let bingpai = shoupai._bingpai[s];
-        for (let n = 1; n < bingpai.length; n++) {
+        for (let n = 1; n <= (s==='z'?7:9); n++) {
             if      (bingpai[n] >= 2) n_duizi++;
             else if (bingpai[n] == 1) n_guli++;
         }
@@ -174,7 +174,7 @@ function tingpai(shoupai, f_xiangting = xiangting) {
     let n_xiangting = f_xiangting(shoupai);
     for (let s of ['m','p','s','z']) {
         let bingpai = shoupai._bingpai[s];
-        for (let n = 1; n < bingpai.length; n++) {
+        for (let n = 1; n <= (s==='z'?7:9); n++) {
             if (bingpai[n] >= 4) continue;
             bingpai[n]++;
             if (f_xiangting(shoupai) < n_xiangting) pai.push(s+n);

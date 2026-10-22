@@ -5,16 +5,24 @@
 
 module.exports = class Shoupai {
 
+    static normal_pai(p) {
+        return p[0] === 'z' ? p.replace(/[089]/g, n=>({0:'5',8:'6',9:'4'}[n])) : p.replace(/0/g,'5');
+    }
+
     static valid_pai(p) {
-        if (p.match(/^(?:[mps]\d|z[1-7])_?\*?[\+\=\-]?$/)) return p;
+        if (p.match(/^(?:[mps]\d|z[0-9])_?\*?[\+\=\-]?$/)) return p;
     }
 
     static valid_mianzi(m) {
 
-        if (m.match(/^z.*[089]/)) return;
+        if (m[0] === 'z') {
+            const h = Shoupai.normal_pai(m);
+            if (/^z([1-7])\1\1[+=-]\1?$/.test(h) || /^z([1-7])\1\1\1[+=-]?$/.test(h)) return m;
+            return;
+        }
         let h = m.replace(/0/g,'5');
         if (h.match(/^[mpsz](\d)\1\1[\+\=\-]\1?$/)) {
-            return m.replace(/([mps])05/,'$1'+'50');
+            return m.replace(/([mpsz])05/,'$1'+'50');
         }
         else if (h.match(/^[mpsz](\d)\1\1\1[\+\=\-]?$/)) {
             return m[0]+m.match(/\d(?![\+\=\-])/g).sort().reverse().join('')
@@ -37,7 +45,7 @@ module.exports = class Shoupai {
             m: [0,0,0,0,0,0,0,0,0,0],
             p: [0,0,0,0,0,0,0,0,0,0],
             s: [0,0,0,0,0,0,0,0,0,0],
-            z: [0,0,0,0,0,0,0,0],
+            z: [0,0,0,0,0,0,0,0,0,0],
         };
         this._fulou = [];
         this._zimo  = null;
@@ -50,9 +58,10 @@ module.exports = class Shoupai {
             }
             if (! (p = Shoupai.valid_pai(p)))       throw new Error(p);
             let s = p[0], n = +p[1];
-            if (this._bingpai[s][n] == 4)           throw new Error([this, p]);
+            const base = +Shoupai.normal_pai(s+n)[1];
+            if (this._bingpai[s][base] >= 4) throw new Error([this,p]);
             this._bingpai[s][n]++;
-            if (s != 'z' && n == 0) this._bingpai[s][5]++;
+            if (base !== n) this._bingpai[s][base]++;
         }
     }
 
@@ -65,7 +74,7 @@ module.exports = class Shoupai {
         for (let suitstr of bingpai.match(/[mpsz]\d+_*/g) || []) {
             let s = suitstr[0];
             for (let n of suitstr.match(/\d/g)) {
-                if (s == 'z' && (n < 1 || 7 < n)) continue;
+                if (s == 'z' && (n < 0 || 9 < n)) continue;
                 qipai.push(s+n);
             }
             qipai = qipai.concat(suitstr.match(/_/g)||[]);
@@ -97,17 +106,13 @@ module.exports = class Shoupai {
         for (let s of ['m','p','s','z']) {
             let suitstr = s;
             let bingpai = this._bingpai[s];
-            let n_hongpai = s == 'z' ? 0 : bingpai[0];
-            for (let n = 1; n < bingpai.length; n++) {
-                let n_pai = bingpai[n];
-                if (this._zimo) {
-                    if (s+n == this._zimo)           { n_pai--;             }
-                    if (n == 5 && s+0 == this._zimo) { n_pai--; n_hongpai-- }
-                }
-                for (let i = 0; i < n_pai; i++) {
-                    if (n ==5 && n_hongpai > 0) { suitstr += 0; n_hongpai-- }
-                    else                        { suitstr += n;             }
-                }
+            for (let n=1;n<=(s==='z'?7:9);n++) {
+                const marker = s==='z' ? ({4:9,5:0,6:8}[n]) : n===5 ? 0 : undefined;
+                let special = marker === undefined ? 0 : bingpai[marker];
+                let total = bingpai[n];
+                if (this._zimo === s+n) total--;
+                if (marker !== undefined && this._zimo === s+marker) {total--;special--;}
+                suitstr += String(marker).repeat(Math.max(0,special)) + String(n).repeat(Math.max(0,total-special));
             }
             if (suitstr.length > 1) paistr += suitstr;
         }
@@ -158,14 +163,16 @@ module.exports = class Shoupai {
     }
 
     decrease(s, n) {
-        let bingpai = this._bingpai[s]; n = + n;
-        if (bingpai[n] == 0 || n == 5 && bingpai[0] == bingpai[5]) {
-            if (this._bingpai._ == 0)               throw new Error([this,s+n]);
+        let bingpai = this._bingpai[s]; n = +n;
+        const base = +Shoupai.normal_pai(s+n)[1];
+        const marker = s==='z' ? ({4:9,5:0,6:8}[base]) : base===5 ? 0 : undefined;
+        const available = n===base ? bingpai[base]-(marker===undefined?0:bingpai[marker]) : bingpai[n];
+        if (!available) {
+            if (!this._bingpai._) throw new Error([this,s+n]);
             this._bingpai._--;
-        }
-        else {
+        } else {
             bingpai[n]--;
-            if (n == 0) bingpai[5]--;
+            if (base!==n) bingpai[base]--;
         }
     }
 
@@ -179,12 +186,10 @@ module.exports = class Shoupai {
             if (! Shoupai.valid_pai(p))             throw new Error(p);
             let s = p[0], n = +p[1];
             let bingpai = this._bingpai[s];
-            if (bingpai[n] == 4)                    throw new Error([this, p]);
+            const base = +Shoupai.normal_pai(s+n)[1];
+            if (bingpai[base] >= 4) throw new Error([this,p]);
             bingpai[n]++;
-            if (n == 0) {
-                if (bingpai[5] == 4)                throw new Error([this, p]);
-                bingpai[5]++;
-            }
+            if (base !== n) bingpai[base]++;
             this._zimo = s+n;
         }
         return this;
@@ -263,11 +268,16 @@ module.exports = class Shoupai {
         if (! this._lizhi) {
             for (let s of ['m','p','s','z']) {
                 let bingpai = this._bingpai[s];
-                for (let n = 1; n < bingpai.length; n++) {
+                for (let n = 1; n <= (s==='z'?7:9); n++) {
                     if (bingpai[n] == 0)  continue;
                     if (deny[s+n])        continue;
                     if (s+n == this._zimo && bingpai[n] == 1) continue;
-                    if (s == 'z' || n != 5)          dapai.push(s+n);
+                    if (s==='z' && [4,5,6].includes(n)) {
+                        const marker={4:9,5:0,6:8}[n];
+                        if (bingpai[marker]>0 && (this._zimo!==s+marker || bingpai[marker]>1)) dapai.push(s+marker);
+                        if (bingpai[n]>bingpai[marker]) dapai.push(s+n);
+                    }
+                    else if (n != 5) dapai.push(s+n);
                     else {
                         if (bingpai[0] > 0
                             && s+0 != this._zimo || bingpai[0] > 1)
@@ -336,6 +346,14 @@ module.exports = class Shoupai {
         if (! d)                                        throw new Error(p);
         if (this._lizhi) return mianzi;
 
+        if(s==='z') {
+            const base=+Shoupai.normal_pai(p)[1], marker={4:9,5:0,6:8}[base], b=this._bingpai.z;
+            const special=marker===undefined?0:b[marker], normal=b[base]-special;
+            for(let k=0;k<=2;k++) if(k<=special && 2-k<=normal)
+                mianzi.push('z'+String(base).repeat(2-k)+String(marker).repeat(k)+p[1]+d);
+            return mianzi;
+        }
+
         let bingpai = this._bingpai[s];
         if (bingpai[n] >= 2) {
             if (n == 5 && bingpai[0] >= 2)  mianzi.push(s+'00'+p[1]+d);
@@ -350,6 +368,17 @@ module.exports = class Shoupai {
     get_gang_mianzi(p) {
 
         let mianzi = [];
+        const honorGang=(base,called)=>{
+            const b=this._bingpai.z, marker={4:9,5:0,6:8}[base], special=marker===undefined?0:b[marker];
+            return 'z'+String(base).repeat(b[base]-special)+String(marker).repeat(special)+(called||'');
+        };
+        if(p && p[0]==='z') {
+            if(this._zimo)return null;
+            if(this._lizhi)return [];
+            const base=+Shoupai.normal_pai(p)[1];
+            return this._bingpai.z[base]===3 ? [honorGang(base,p.slice(1))] : [];
+        }
+
         if (p) {
             if (this._zimo) return null;
             if (! Shoupai.valid_pai(p))                 throw new Error(p);
@@ -368,12 +397,21 @@ module.exports = class Shoupai {
         else {
             if (! this._zimo) return null;
             if (this._zimo.length > 2) return null;
-            let p = this._zimo.replace(/0/,'5');
+            let p = Shoupai.normal_pai(this._zimo);
 
             for (let s of ['m','p','s','z']) {
                 let bingpai = this._bingpai[s];
-                for (let n = 1; n < bingpai.length; n++) {
+                for (let n = 1; n <= (s==='z'?7:9); n++) {
                     if (bingpai[n] == 0) continue;
+                    if(s==='z') {
+                        if(bingpai[n]===4 && (!this._lizhi || p==='z'+n)) mianzi.push(honorGang(n));
+                        if(!this._lizhi) for(const m of this._fulou) if(Shoupai.normal_pai(m).slice(0,4)==='z'+String(n).repeat(3)) {
+                            const marker={4:9,5:0,6:8}[n], special=marker===undefined?0:bingpai[marker];
+                            if(bingpai[n]>special)mianzi.push(m+n);
+                            if(special)mianzi.push(m+marker);
+                        }
+                        continue;
+                    }
                     if (bingpai[n] == 4) {
                         if (this._lizhi && s+n != p) continue;
                         if (n == 5) mianzi.push(s + '5'.repeat(4 - bingpai[0])

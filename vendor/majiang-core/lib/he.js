@@ -15,7 +15,7 @@ module.exports = class He {
     dapai(p) {
         if (! Majiang.Shoupai.valid_pai(p))         throw new Error(p);
         this._pai.push(p.replace(/[\+\=\-]$/,''));
-        this._find[p[0]+(+p[1]||5)] = true;
+        this._find[Majiang.Shoupai.normal_pai(p).slice(0,2)] = true;
         return this;
     }
 
@@ -30,7 +30,7 @@ module.exports = class He {
     }
 
     find(p) {
-        return this._find[p[0]+(+p[1]||5)];
+        return this._find[Majiang.Shoupai.normal_pai(p).slice(0,2)];
     }
 }
 

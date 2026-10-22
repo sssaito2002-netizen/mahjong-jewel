@@ -496,6 +496,8 @@ module.exports = class Game {
                                     : shoupai.toString(),
                 baojia:     rongpai ? model.lunban : null,
                 fubaopai:   fubaopai,
+                pocchiAs:   hule.pocchiAs,
+                pocchi:     hule.pocchi,
                 fu:         hule.fu,
                 fanshu:     hule.fanshu,
                 damanguan:  hule.damanguan,
@@ -815,7 +817,7 @@ module.exports = class Game {
             let l = (model.lunban + i) % 4;
             let reply = this.get_reply(l);
             if (reply.fulou) {
-                let m = reply.fulou.replace(/0/g,'5');
+                let m = Majiang.Shoupai.normal_pai(reply.fulou);
                 if (m.match(/^[mpsz](\d)\1\1\1/)) {
                     if (this.get_gang_mianzi(l).find(m => m == reply.fulou)) {
                         this.say('gang', l);
@@ -1092,6 +1094,13 @@ module.exports = class Game {
 
         if (p && ! neng_rong) return false;
 
+        if (!p && ((rule.whitePocchi && shoupai.lizhi && shoupai._zimo === 'z0') || (rule.goldPocchi && shoupai._zimo === 'z8') || (rule.ganePocchi && shoupai.lizhi && shoupai._zimo === 'z9'))) {
+            const rv = Majiang.Util.hule(shoupai, null, {
+                rule, zhuangfeng, menfeng, hupai:{lizhi:shoupai.lizhi?1:0}, baopai:[],
+                jicun:{changbang:0,lizhibang:0}
+            });
+            return !!(rv && rv.hupai);
+        }
         let new_shoupai = shoupai.clone();
         if (p) new_shoupai.zimo(p);
         if (Majiang.Util.xiangting(new_shoupai) != -1) return false;

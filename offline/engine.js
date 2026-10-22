@@ -38,31 +38,7 @@ function actions(p,msg) {
  }
  return out;
 }
-function cpu(p,options) {
- const win=options.find(a=>a.reply.hule); if(win)return win.reply;
- const discards=options.filter(a=>a.reply.dapai);
- if(discards.length) {
-  let best,score=-Infinity;
-  for(const a of discards) {
-   const h=p.shoupai.clone().dapai(a.reply.dapai), n=M.Util.xiangting(h);
-   let value=-n*1000;
-   if(n>=0) value+=M.Util.tingpai(h).reduce((s,t)=>s+4-(h._bingpai[t[0]][+t[1]]||0),0);
-   if(a.reply.dapai.endsWith('*'))value+=50;
-   if(a.reply.dapai[1]==='0')value-=5;
-   if(value>score){score=value;best=a;}
-  }
-  return best.reply;
- }
- // Only call when doing so improves shanten and preserves an obvious open yaku.
- for(const a of options.filter(a=>a.reply.fulou)) {
-  const h=p.shoupai.clone().fulou(a.reply.fulou);
-  const honors=[5,6,7,p._menfeng+1,...(p._rule['場風牌']||[p.model.zhuangfeng+1])];
-  const yakuhai=h._fulou.some(m=>m[0]==='z'&&honors.includes(+m[1]));
-  const simple= !/[19]/.test(h.toString().replace(/z\d+/g,''))&&!h.toString().includes('z');
-  if((yakuhai||simple) && M.Util.xiangting(h)<M.Util.xiangting(p.shoupai)) return a.reply;
- }
- return {};
-}
+const cpu=require('./cpu')(M,J);
 class Player extends M.Player {
  constructor(decide,onUpdate=()=>{}) {super();this.decide=decide;this.onUpdate=onUpdate;}
  action(msg,callback) {

@@ -21,7 +21,7 @@ module.exports = class He {
 
     fulou(m) {
         if (! Majiang.Shoupai.valid_mianzi(m))      throw new Error(m);
-        let p = m[0] + m.match(/\d(?=[\+\=\-])/), d = m.match(/[\+\=\-]/);
+        let p = m[0] + m.match(/[0-9A](?=[\+\=\-])/), d = m.match(/[\+\=\-]/);
         if (! d)                                    throw new Error(m);
         if (this._pai[this._pai.length - 1].slice(0,2) != p)
                                                     throw new Error(m);

@@ -116,7 +116,7 @@ module.exports = class Player {
         if (this._callback) this.action_gang(gang);
 
         this._diyizimo = false;
-        if (gang.l != this._menfeng && ! gang.m.match(/^[mpsz]\d{4}$/)) {
+        if (gang.l != this._menfeng && ! gang.m.match(/^[mpsz][0-9A]{4}$/)) {
             let normalized=Majiang.Shoupai.normal_pai(gang.m[0]+gang.m.slice(-1));
             let s=normalized[0], n=+normalized[1];
             if (this.hulepai.find(p=> p == s+n)) this._neng_rong = false;

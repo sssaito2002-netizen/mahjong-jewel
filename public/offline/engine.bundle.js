@@ -2,20 +2,23 @@
 (function(){const modules={"offline/engine.js":function(module,exports,require){
 'use strict';
 const M = require("vendor/majiang-core/lib/index.js");
+const J=require("offline/jewels.js");
+const Physical=require("offline/physical.js")(M);
 const PAYOUT = [50,25,-25,-50];
 const UNLOCK_YAKU = ['平和','断幺九','一盃口','三色同順','一気通貫','混全帯幺九','七対子','対々和','三暗刻','三色同刻','混老頭','小三元','混一色','純全帯幺九','二盃口','清一色','翻牌 白','翻牌 發','翻牌 中'];
 function rule(extra={}) {
  const modes=extra.pocchiModes||[extra.pocchiMode||'amethyst-white'];
- const allowed=['white','amethyst-white','gold','gane'];
- if(!Array.isArray(modes)||modes.length>3||new Set(modes).size!==modes.length||modes.some(x=>!allowed.includes(x))||(modes.includes('white')&&modes.includes('amethyst-white')))throw Error('ポッチ構成が不正です');
- return M.rule({'場数':1,'延長戦方式':0,'赤牌':{m:1,p:1,s:1},jewelBonus:true,fullJewel:true,...extra,
-  pocchiModes:modes.slice(),whitePocchi:modes.includes('white')||modes.includes('amethyst-white'),pocchiAmethyst:modes.includes('amethyst-white'),goldPocchi:modes.includes('gold'),ganePocchi:modes.includes('gane')});
+ const legacy={white:'topaz','amethyst-white':'amethyst-white',gold:'gold-pocchi',gane:'gane-pocchi'};
+ const ids=extra.gemSelection||['lapis','amethyst-p','tourmaline',...modes.map(x=>legacy[x]||x)];
+ const gemTiles=J.configure(ids);
+ return M.rule({'場数':1,'延長戦方式':0,'赤牌':{m:0,p:0,s:0},jewelBonus:true,fullJewel:true,...extra,
+  gemSelection:ids.slice(),gemTiles,pocchiModes:modes.slice(),whitePocchi:ids.some(x=>['topaz','amethyst-white'].includes(x)),pocchiAmethyst:ids.includes('amethyst-white'),goldPocchi:ids.includes('gold-pocchi'),ganePocchi:ids.includes('gane-pocchi')});
 }
 function actions(p,msg) {
  const out=[]; const self=p._menfeng, hand=p.shoupai;
  if(!hand)return out;
  const z=msg.zimo||msg.gangzimo;
- const add=(label,reply)=>out.push({label,reply});
+ const add=(label,reply)=>{if(reply.hule&&(J.has(p._rule,hand,'carnelian')||p._rule.gemTiles?.[msg.dapai?.p.slice(0,2)]?.effect==='carnelian')){out.push({label:label+'（祝儀優先）',reply:{...reply,jewelChoice:'chips'}});out.push({label:label+'（翻数優先）',reply:{...reply,jewelChoice:'han'}});}else out.push({label,reply});};
  if(z && z.l===self || msg.fulou && msg.fulou.l===self && !msg.fulou.m.match(/\d{4}/)) {
   if(z && p.allow_hule(hand,null,!!msg.gangzimo)) add('ツモ',{hule:'-'});
   if(z) for(const m of p.get_gang_mianzi(hand)||[]) add('カン '+m,{gang:m});
@@ -78,19 +81,10 @@ class Player extends M.Player {
 
 }
 for(const type of ['kaiju','qipai','zimo','dapai','fulou','gang','hule','pingju','jieju'])Player.prototype['action_'+type]=function(){this.respond();};
-function indicatorNumber(p) {return p && p[0]!=='z' ? (+p[1]||5) : 0;}
-function garnetValue(indicators=[],ura=[]) {return Math.max(0,...indicators.map((p,i)=>indicatorNumber(p[0]==='z'?ura[i]:p)));}
-function bonus(h,points,unlockedYaku=null) {
- const text=h.shoupai, m=(text.match(/m[^psz,]*/g)||[]).join(''), p=(text.match(/p[^msz,]*/g)||[]).join(''), s=(text.match(/s[^mpz,]*/g)||[]).join('');
- const lapis=(m.match(/0/g)||[]).length, amethyst=(p.match(/0/g)||[]).length+(h.pocchiAmethyst===false?0:((text.match(/z[^mps,]*/g)||[]).join('').match(/0/g)||[]).length), tourmaline=(s.match(/0/g)||[]).length;
- const usual=(h.hupai||[]).filter(y=>['一発','裏ドラ'].includes(y.name)).reduce((n,y)=>n+(+y.fanshu||0),0);
- const honors=(text.match(/z[^mps,]*/g)||[]).join('');
- const gold=(honors.match(/8/g)||[]).length*4;
- const north=(honors.match(/9/g)||[]).length*Math.max(garnetValue(h.indicators,h.garnetUra),indicatorNumber(h.winningTile));
- const unlocked=(h.hupai||[]).some(y=>y.name===unlockedYaku)?5:0;
- const digit=Math.max(...String(Math.floor(Math.max(0,points)/100)).slice(-3).split('').map(Number),0);
- return (usual+unlocked+gold+north+lapis*(h.fanshu||13)+amethyst+tourmaline*digit)*2**amethyst;
-}
+function indicatorNumber(p){return J.number(p);}
+function garnetValue(indicators=[],ura=[]){return J.garnet(indicators,ura);}
+function bonus(h,points,unlockedYaku=null,gameRule=rule()){return J.bonus(h,points,unlockedYaku,gameRule);}
+
 function transfer(chips,winner,loser,n) {
  if(loser===null){for(let id=0;id<4;id++)if(id!==winner){chips[id]-=n;chips[winner]+=n;}}
  else{chips[loser]-=n;chips[winner]+=n;}
@@ -109,7 +103,7 @@ class Game extends M.Game {
    h.winningTile=M.Shoupai.fromString(h.shoupai)._zimo;
    h.unlockedYaku=this._rule.unlockedYaku;
    h.unlockedChips=(h.hupai||[]).some(y=>y.name===h.unlockedYaku)?5:0;
-   const n=bonus(h,this.model.defen[winner],this._rule.unlockedYaku);transfer(this.chips,winner,loser,n);
+   const n=bonus(h,this.model.defen[winner],this._rule.unlockedYaku,this._rule);transfer(this.chips,winner,loser,n);
    const victims=[];
    for(let seat=0;seat<4;seat++) {
     const id=ids[seat];
@@ -133,7 +127,7 @@ function saveResult(storage,id,results) {
  for(const r of results){const t=record.totals[r.id]||{rankChips:0,bonusChips:0,games:0};record.totals[r.id]={rankChips:t.rankChips+r.rankChips,bonusChips:t.bonusChips+r.bonusChips,games:t.games+1};}
  record.games.push({id,at:new Date().toISOString(),results});storage.setItem(key,JSON.stringify(record));return record;
 }
-module.exports={M,UNLOCK_YAKU,indicatorNumber,garnetValue,rule,actions,cpu,Player,Game,bonus,transfer,settle,saveResult};
+module.exports={M,J,Physical,UNLOCK_YAKU,indicatorNumber,garnetValue,rule,actions,cpu,Player,Game,bonus,transfer,settle,saveResult};
 
 },
 "vendor/majiang-core/lib/index.js":function(module,exports,require){
@@ -233,11 +227,11 @@ module.exports = function(param = {}) {
 module.exports = class Shoupai {
 
     static normal_pai(p) {
-        return p[0] === 'z' ? p.replace(/[089]/g, n=>({0:'5',8:'6',9:'4'}[n])) : p.replace(/0/g,'5');
+        return p[0] === 'z' ? p.replace(/[089A]/g, n=>({0:'5',8:'6',9:'4',A:'5'}[n])) : p.replace(/[0A]/g,'5');
     }
 
     static valid_pai(p) {
-        if (p.match(/^(?:[mps]\d|z[0-9])_?\*?[\+\=\-]?$/)) return p;
+        if (p.match(/^(?:[mps][0-9A]|z[0-9A])_?\*?[\+\=\-]?$/)) return p;
     }
 
     static valid_mianzi(m) {
@@ -248,19 +242,19 @@ module.exports = class Shoupai {
             return;
         }
         let h = m.replace(/0/g,'5');
-        if (h.match(/^[mpsz](\d)\1\1[\+\=\-]\1?$/)) {
+        if (h.match(/^[mpsz]([0-9A])\1\1[\+\=\-]\1?$/)) {
             return m.replace(/([mpsz])05/,'$1'+'50');
         }
-        else if (h.match(/^[mpsz](\d)\1\1\1[\+\=\-]?$/)) {
-            return m[0]+m.match(/\d(?![\+\=\-])/g).sort().reverse().join('')
-                       +(m.match(/\d[\+\=\-]$/)||[''])[0];
+        else if (h.match(/^[mpsz]([0-9A])\1\1\1[\+\=\-]?$/)) {
+            return m[0]+m.match(/[0-9A](?![\+\=\-])/g).sort().reverse().join('')
+                       +(m.match(/[0-9A][\+\=\-]$/)||[''])[0];
         }
-        else if (h.match(/^[mps]\d+\-\d*$/)) {
+        else if (h.match(/^[mps][0-9A]+\-[0-9A]*$/)) {
             let hongpai = m.match(/0/);
-            let nn = h.match(/\d/g).sort();
+            let nn = h.match(/[0-9A]/g).sort();
             if (nn.length != 3)                               return;
             if (+nn[0] + 1 != +nn[1] || +nn[1] + 1 != +nn[2]) return;
-            h = h[0]+h.match(/\d[\+\=\-]?/g).sort().join('');
+            h = h[0]+h.match(/[0-9A][\+\=\-]?/g).sort().join('');
             return hongpai ? h.replace(/5/,'0') : h;
         }
     }
@@ -269,10 +263,10 @@ module.exports = class Shoupai {
 
         this._bingpai = {
             _:  0,
-            m: [0,0,0,0,0,0,0,0,0,0],
-            p: [0,0,0,0,0,0,0,0,0,0],
-            s: [0,0,0,0,0,0,0,0,0,0],
-            z: [0,0,0,0,0,0,0,0,0,0],
+            m: [0,0,0,0,0,0,0,0,0,0,0],
+            p: [0,0,0,0,0,0,0,0,0,0,0],
+            s: [0,0,0,0,0,0,0,0,0,0,0],
+            z: [0,0,0,0,0,0,0,0,0,0,0],
         };
         this._fulou = [];
         this._zimo  = null;
@@ -284,8 +278,8 @@ module.exports = class Shoupai {
                 continue;
             }
             if (! (p = Shoupai.valid_pai(p)))       throw new Error(p);
-            let s = p[0], n = +p[1];
-            const base = +Shoupai.normal_pai(s+n)[1];
+            let s = p[0], n = p[1]==='A'?10:+p[1];
+            const base = +Shoupai.normal_pai(s+(n===10?'A':n))[1];
             if (this._bingpai[s][base] >= 4) throw new Error([this,p]);
             this._bingpai[s][n]++;
             if (base !== n) this._bingpai[s][base]++;
@@ -298,9 +292,9 @@ module.exports = class Shoupai {
         let bingpai = fulou.shift();
 
         let qipai = bingpai.match(/^_*/)[0].match(/_/g) || [];
-        for (let suitstr of bingpai.match(/[mpsz]\d+_*/g) || []) {
+        for (let suitstr of bingpai.match(/[mpsz][0-9A]+_*/g) || []) {
             let s = suitstr[0];
-            for (let n of suitstr.match(/\d/g)) {
+            for (let n of suitstr.match(/[0-9A]/g)) {
                 if (s == 'z' && (n < 0 || 9 < n)) continue;
                 qipai.push(s+n);
             }
@@ -334,12 +328,11 @@ module.exports = class Shoupai {
             let suitstr = s;
             let bingpai = this._bingpai[s];
             for (let n=1;n<=(s==='z'?7:9);n++) {
-                const marker = s==='z' ? ({4:9,5:0,6:8}[n]) : n===5 ? 0 : undefined;
-                let special = marker === undefined ? 0 : bingpai[marker];
-                let total = bingpai[n];
-                if (this._zimo === s+n) total--;
-                if (marker !== undefined && this._zimo === s+marker) {total--;special--;}
-                suitstr += String(marker).repeat(Math.max(0,special)) + String(n).repeat(Math.max(0,total-special));
+                const markers = s==='z'?({4:[9],5:[0,10],6:[8]}[n]||[]):n===5?[0,10]:[];
+                let total=bingpai[n], special=0;
+                for(const marker of markers){const ch=marker===10?'A':String(marker);let count=bingpai[marker]||0;if(this._zimo===s+ch){total--;count--;}special+=count;suitstr+=ch.repeat(Math.max(0,count));}
+                if(this._zimo===s+n)total--;
+                suitstr+=String(n).repeat(Math.max(0,total-special));
             }
             if (suitstr.length > 1) paistr += suitstr;
         }
@@ -390,10 +383,10 @@ module.exports = class Shoupai {
     }
 
     decrease(s, n) {
-        let bingpai = this._bingpai[s]; n = +n;
-        const base = +Shoupai.normal_pai(s+n)[1];
+        let bingpai = this._bingpai[s]; n = n==='A'?10:+n;
+        const base = +Shoupai.normal_pai(s+(n===10?'A':n))[1];
         const marker = s==='z' ? ({4:9,5:0,6:8}[base]) : base===5 ? 0 : undefined;
-        const available = n===base ? bingpai[base]-(marker===undefined?0:bingpai[marker]) : bingpai[n];
+        const available = n===base ? bingpai[base]-(marker===undefined?0:bingpai[marker])-(base===5?bingpai[10]:0) : bingpai[n];
         if (!available) {
             if (!this._bingpai._) throw new Error([this,s+n]);
             this._bingpai._--;
@@ -411,13 +404,13 @@ module.exports = class Shoupai {
         }
         else {
             if (! Shoupai.valid_pai(p))             throw new Error(p);
-            let s = p[0], n = +p[1];
+            let s = p[0], n = p[1]==='A'?10:+p[1];
             let bingpai = this._bingpai[s];
-            const base = +Shoupai.normal_pai(s+n)[1];
+            const base = +Shoupai.normal_pai(s+(n===10?'A':n))[1];
             if (bingpai[base] >= 4) throw new Error([this,p]);
             bingpai[n]++;
             if (base !== n) bingpai[base]++;
-            this._zimo = s+n;
+            this._zimo = s+(n===10?'A':n);
         }
         return this;
     }
@@ -425,8 +418,8 @@ module.exports = class Shoupai {
     dapai(p, check = true) {
         if (check && ! this._zimo)                  throw new Error([this, p]);
         if (! Shoupai.valid_pai(p))                 throw new Error(p);
-        let s = p[0], n = +p[1];
-        this.decrease(s, n);
+        let s = p[0], n = p[1]==='A'?10:+p[1];
+        this.decrease(s, p[1]);
         this._zimo = null;
         if (p.slice(-1) == '*') this._lizhi = true;
         return this;
@@ -435,14 +428,14 @@ module.exports = class Shoupai {
     fulou(m, check = true) {
         if (check && this._zimo)                    throw new Error([this, m]);
         if (m != Shoupai.valid_mianzi(m))           throw new Error(m);
-        if (m.match(/\d{4}$/))                      throw new Error([this, m]);
-        if (m.match(/\d{3}[\+\=\-]\d$/))            throw new Error([this, m]);
+        if (m.match(/[0-9A]{4}$/))                      throw new Error([this, m]);
+        if (m.match(/[0-9A]{3}[\+\=\-][0-9A]$/))            throw new Error([this, m]);
         let s = m[0];
-        for (let n of m.match(/\d(?![\+\=\-])/g)) {
+        for (let n of m.match(/[0-9A](?![\+\=\-])/g)) {
             this.decrease(s, n);
         }
         this._fulou.push(m);
-        if (! m.match(/\d{4}/)) this._zimo = m;
+        if (! m.match(/[0-9A]{4}/)) this._zimo = m;
         return this;
     }
 
@@ -451,13 +444,13 @@ module.exports = class Shoupai {
         if (check && this._zimo.length > 2)         throw new Error([this, m]);
         if (m != Shoupai.valid_mianzi(m))           throw new Error(m);
         let s = m[0];
-        if (m.match(/\d{4}$/)) {
-            for (let n of m.match(/\d/g)) {
+        if (m.match(/[0-9A]{4}$/)) {
+            for (let n of m.match(/[0-9A]/g)) {
                 this.decrease(s, n);
             }
             this._fulou.push(m);
         }
-        else if (m.match(/\d{3}[\+\=\-]\d$/)) {
+        else if (m.match(/[0-9A]{3}[\+\=\-][0-9A]$/)) {
             let m1 = m.slice(0,5);
             let i = this._fulou.findIndex(m2 => m1 == m2);
             if (i < 0)                              throw new Error([this, m]);
@@ -483,11 +476,11 @@ module.exports = class Shoupai {
         if (check && this._zimo.length > 2) {
             let m = this._zimo;
             let s = m[0];
-            let n = + m.match(/\d(?=[\+\=\-])/) || 5;
+            let n = + m.match(/[0-9A](?=[\+\=\-])/) || 5;
             deny[s+n] = true;
-            if (! m.replace(/0/,'5').match(/^[mpsz](\d)\1\1/)) {
-                if (n < 7 && m.match(/^[mps]\d\-\d\d$/)) deny[s+(n+3)] = true;
-                if (3 < n && m.match(/^[mps]\d\d\d\-$/)) deny[s+(n-3)] = true;
+            if (! m.replace(/0/,'5').match(/^[mpsz]([0-9A])\1\1/)) {
+                if (n < 7 && m.match(/^[mps][0-9A]\-[0-9A][0-9A]$/)) deny[s+(n+3)] = true;
+                if (3 < n && m.match(/^[mps][0-9A][0-9A][0-9A]\-$/)) deny[s+(n-3)] = true;
             }
         }
 
@@ -686,17 +679,13 @@ module.exports = class Shan {
         let hongpai = rule['赤牌'];
 
         let pai = [];
-        let whitePocchi = rule.whitePocchi ? 1 : 0;
-        for (let s of ['m','p','s','z']) {
-            for (let n = 1; n <= (s == 'z' ? 7 : 9); n++) {
-                for (let i = 0; i < 4; i++) {
-                    if (s == 'z' && n == 6 && i === 0 && rule.goldPocchi) pai.push('z8');
-                    else if (s == 'z' && n == 4 && i === 0 && rule.ganePocchi) pai.push('z9');
-                    else if (s == 'z' && n == 5 && i < whitePocchi) pai.push('z0');
-                    else if (n == 5 && i < hongpai[s]) pai.push(s+0);
-                    else                          pai.push(s+n);
-                }
+        if(rule.gemTiles) {
+            for(const s of ['m','p','s','z'])for(let n=1;n<=(s==='z'?7:9);n++)for(let i=0;i<4;i++)pai.push(s+n);
+            for(const [token,g] of Object.entries(rule.gemTiles)) {
+                const i=pai.indexOf(g.base);if(i<0)throw Error('Invalid Jewel wall');pai[i]=token;
             }
+        } else {
+            for (let s of ['m','p','s','z']) for(let n=1;n<=(s==='z'?7:9);n++)for(let i=0;i<4;i++)pai.push(n===5&&i<(hongpai[s]||0)?s+0:s+n);
         }
 
         this._pai = [];
@@ -776,7 +765,7 @@ module.exports = class He {
 
     fulou(m) {
         if (! Majiang.Shoupai.valid_mianzi(m))      throw new Error(m);
-        let p = m[0] + m.match(/\d(?=[\+\=\-])/), d = m.match(/[\+\=\-]/);
+        let p = m[0] + m.match(/[0-9A](?=[\+\=\-])/), d = m.match(/[\+\=\-]/);
         if (! d)                                    throw new Error(m);
         if (this._pai[this._pai.length - 1].slice(0,2) != p)
                                                     throw new Error(m);
@@ -957,6 +946,7 @@ module.exports = class Board {
  */
 "use strict";
 
+const Jewel = require("offline/jewels.js");
 const Majiang = {
     rule:    require("vendor/majiang-core/lib/rule.js"),
     Shoupai: require("vendor/majiang-core/lib/shoupai.js"),
@@ -1306,7 +1296,7 @@ module.exports = class Game {
 
         model.shoupai[model.lunban].fulou(fulou);
 
-        if (fulou.match(/^[mpsz]\d{4}/)) {
+        if (fulou.match(/^[mpsz][0-9A]{4}/)) {
             this._gang = fulou;
             this._n_gang[model.lunban]++;
         }
@@ -1360,7 +1350,7 @@ module.exports = class Game {
         this.add_paipu(paipu);
 
         if (! this._rule['カンドラ後乗せ'] ||
-            this._gang.match(/^[mpsz]\d{4}$/)) this.kaigang();
+            this._gang.match(/^[mpsz][0-9A]{4}$/)) this.kaigang();
 
         let msg = [];
         for (let l = 0; l < 4; l++) {
@@ -1417,6 +1407,7 @@ module.exports = class Game {
 
         let param = {
             rule:           this._rule,
+            jewelChoice:    this._reply[model.player_id[menfeng]]?.jewelChoice,
             zhuangfeng:     model.zhuangfeng,
             menfeng:        menfeng,
             hupai: {
@@ -1450,6 +1441,8 @@ module.exports = class Game {
                                     : shoupai.toString(),
                 baojia:     rongpai ? model.lunban : null,
                 fubaopai:   fubaopai,
+                blackChips: hule.blackChips,
+                carnelianChoice: hule.carnelianChoice,
                 pocchiAs:   hule.pocchiAs,
                 pocchi:     hule.pocchi,
                 fu:         hule.fu,
@@ -1631,7 +1624,7 @@ module.exports = class Game {
         }
         this._paipu.rank = rank;
 
-        const round = ! this._rule['順位点'].find(p=>p.match(/\.\d$/));
+        const round = ! this._rule['順位点'].find(p=>p.match(/\.[0-9A]$/));
         let point = [0,0,0,0];
         for (let i = 1; i < 4; i++) {
             let id = paiming[i];
@@ -1772,13 +1765,13 @@ module.exports = class Game {
             let reply = this.get_reply(l);
             if (reply.fulou) {
                 let m = Majiang.Shoupai.normal_pai(reply.fulou);
-                if (m.match(/^[mpsz](\d)\1\1\1/)) {
+                if (m.match(/^[mpsz]([0-9A])\1\1\1/)) {
                     if (this.get_gang_mianzi(l).find(m => m == reply.fulou)) {
                         this.say('gang', l);
                         return this.delay(()=>this.fulou(reply.fulou));
                     }
                 }
-                else if (m.match(/^[mpsz](\d)\1\1/)) {
+                else if (m.match(/^[mpsz]([0-9A])\1\1/)) {
                     if (this.get_peng_mianzi(l).find(m => m == reply.fulou)) {
                         this.say('peng', l);
                         return this.delay(()=>this.fulou(reply.fulou));
@@ -1821,7 +1814,7 @@ module.exports = class Game {
 
         let model = this._model;
 
-        if (this._gang.match(/^[mpsz]\d{4}$/)) {
+        if (this._gang.match(/^[mpsz][0-9A]{4}$/)) {
             return this.delay(()=>this.gangzimo(), 0);
         }
 
@@ -1958,7 +1951,7 @@ module.exports = class Game {
             && shoupai._zimo && shoupai._zimo.length > 2)
         {
             let deny = shoupai._zimo[0]
-                     + (+shoupai._zimo.match(/\d(?=[\+\=\-])/)||5);
+                     + (+shoupai._zimo.match(/[0-9A](?=[\+\=\-])/)||5);
             return shoupai.get_dapai(false)
                                 .filter(p => p.replace(/0/,'5') != deny);
         }
@@ -2018,7 +2011,7 @@ module.exports = class Game {
 
         if (! shoupai._zimo)   return false;
         if (shoupai.lizhi)     return false;
-        if (! shoupai.menqian) return false;
+        if (! shoupai.menqian && !Jewel.has(rule,shoupai,'turquoise')) return false;
 
         if (! rule['ツモ番なしリーチあり'] && paishu < 4) return false;
         if (rule['トビ終了あり'] && defen < 1000)         return false;
@@ -2027,6 +2020,7 @@ module.exports = class Game {
 
         if (p) {
             let new_shoupai = shoupai.clone().dapai(p);
+            if(!new_shoupai.menqian&&!Jewel.has(rule,new_shoupai,'turquoise'))return false;
             return Majiang.Util.xiangting(new_shoupai) == 0
                     && Majiang.Util.tingpai(new_shoupai).length > 0;
         }
@@ -2034,6 +2028,7 @@ module.exports = class Game {
             let dapai = [];
             for (let p of Game.get_dapai(rule, shoupai)) {
                 let new_shoupai = shoupai.clone().dapai(p);
+                if(!new_shoupai.menqian&&!Jewel.has(rule,new_shoupai,'turquoise'))continue;
                 if (Majiang.Util.xiangting(new_shoupai) == 0
                     && Majiang.Util.tingpai(new_shoupai).length > 0)
                 {
@@ -2048,7 +2043,7 @@ module.exports = class Game {
 
         if (p && ! neng_rong) return false;
 
-        if (!p && ((rule.whitePocchi && shoupai.lizhi && shoupai._zimo === 'z0') || (rule.goldPocchi && shoupai._zimo === 'z8') || (rule.ganePocchi && shoupai.lizhi && shoupai._zimo === 'z9'))) {
+        if (!p && Jewel.wildcard(rule,shoupai)) {
             const rv = Majiang.Util.hule(shoupai, null, {
                 rule, zhuangfeng, menfeng, hupai:{lizhi:shoupai.lizhi?1:0}, baopai:[],
                 jicun:{changbang:0,lizhibang:0}
@@ -2101,6 +2096,67 @@ module.exports = class Game {
     }
 }
 
+
+},
+"offline/jewels.js":function(module,exports,require){
+'use strict';
+const SOURCES={initial:'https://note.com/menzenreach/n/ne611720a6e37',v2:'https://note.com/menzenreach/n/n29f9fdb978fd',v3:'https://note.com/menzenreach/n/nc00d9a47e5d7',v4:'https://note.com/menzenreach/n/n281285c5140e',v5:'https://note.com/menzenreach/n/ncbc49b792147',v6:'https://note.com/menzenreach/n/nb34690c45187'};
+const rows=[
+ ['emerald','エメラルド','m5',1,'fixed',3,'initial'],['lapis','ラピスラズリ','m5',2,'lapis',0,'v5'],
+ ['ruby','ルビー','p5',1,'fixed',1,'initial'],['silver','シルバー','p5',2,'fixed',0,'initial'],
+ ['gold','ゴールド','p5',2,'fixed',4,'v6'],['amethyst-p','アメジスト','p5',2,'amethyst',1,'v2'],
+ ['pearl','パール','p5',0,'pearl',3,'v3'],['carnelian','カーネリアン','p5',0,'carnelian',0,'v2'],
+ ['turquoise','ターコイズ','p5',0,'turquoise',4,'v4'],['black-diamond','ブラックダイヤ','p5',2,'black',0,'v4'],
+ ['aquamarine','アクアマリン','s5',1,'fixed',2,'v5'],['garnet','ガーネット','s5',2,'garnet',0,'v4'],
+ ['crystal','クリスタル','s5',2,'crystal',0,'v2'],['tourmaline','トルマリン','s5',2,'tourmaline',0,'v5'],
+ ['amethyst-s','アメジスト','s5',2,'amethyst',1,'v6'],
+ ['topaz','トパーズ白ポッチ','z5',0,'fixed',1,'initial'],['amethyst-white','アメジスト白ポッチ','z5',0,'amethyst',1,'v2'],
+ ['gold-pocchi','ゴールド發ポッチ','z6',0,'fixed',4,'v3'],['gane-pocchi','ガネクリ北ポッチ','z4',0,'gane',0,'v6']
+];
+const CATALOG=rows.map(([id,name,base,han,effect,chips,source])=>({id,name,base,han,effect,chips,source:SOURCES[source],pocchi:base[0]==='z'}));
+const BY_ID=Object.fromEntries(CATALOG.map(g=>[g.id,g]));
+const DEFAULT=['lapis','amethyst-p','tourmaline','amethyst-white'];
+function configure(ids){
+ if(!Array.isArray(ids)||new Set(ids).size!==ids.length)throw Error('同じ宝石牌は1枚までです');
+ const groups={},tiles={};for(const id of ids){const g=BY_ID[id];if(!g)throw Error('不明な宝石牌: '+id);(groups[g.base]||=[]).push(g);if(groups[g.base].length>2)throw Error(g.base+'に入る宝石牌は2種類までです');}
+ for(const [base,gs] of Object.entries(groups))gs.forEach((g,i)=>{const token=base[0]+(base[0]==='z'?({4:'9',5:i?'A':'0',6:'8'}[base[1]]):i?'A':'0');tiles[token]={...g};});
+ if(ids.filter(id=>BY_ID[id].pocchi).length>3)throw Error('ポッチは最大3種類です');
+ return tiles;
+}
+function rawTiles(text){const out=[];for(const part of text.match(/[mpsz][0-9A]+/g)||[])for(const n of part.slice(1))out.push(part[0]+n);return out;}
+function owned(rule,hand){return rawTiles(typeof hand==='string'?hand:hand.toString()).map(t=>rule.gemTiles?.[t]).filter(Boolean);}
+function has(rule,hand,effect){return owned(rule,hand).some(g=>g.effect===effect);}
+function wildcard(rule,hand){const g=rule.gemTiles?.[hand._zimo];return !!g?.pocchi && (g.id==='gold-pocchi'||hand.lizhi);}
+function number(p){return p&&p[0]!=='z'?(p[1]==='0'||p[1]==='A'?5:+p[1]):0;}
+function garnet(indicators=[],ura=[]){return Math.max(0,...indicators.map((p,i)=>number(p[0]==='z'?ura[i]:p)));}
+function full(rule,items){const numbers=Object.values(rule.gemTiles||{}).filter(g=>!g.pocchi);return numbers.length>0&&numbers.every(g=>items.some(x=>x.id===g.id))&&new Set(items.filter(g=>g.pocchi).map(g=>g.id)).size>=2;}
+function modifyHan(items,han,choice){const car=items.some(g=>g.effect==='carnelian');const mode=car&&(choice==='han'||han<=1)?'han':'chips';if(car)han+=mode==='han'?5:-1;const pearls=items.filter(g=>g.effect==='pearl').length;return {han:han*2**pearls,carnelianChoice:car?mode:null};}
+function bonus(h,points,unlockedYaku,rule){
+ const items=owned(rule,h.shoupai), count=e=>items.filter(g=>g.effect===e).length;
+ const usual=(h.hupai||[]).filter(y=>['一発','裏ドラ'].includes(y.name)).reduce((n,y)=>n+(+y.fanshu||0),0);
+ const winning=h.pocchiAs||h.winningTile;let total=usual;
+ // Yakuman chips are charged per payer, just like all other chips.
+ if(h.damanguan)total+=(h.baojia==null?10:20)*h.damanguan;
+ else if(h.fanshu>=13)total+=h.baojia==null?5:10;
+ if((h.hupai||[]).some(y=>y.name===unlockedYaku))total+=5;
+ for(const g of items){if(['fixed','amethyst','pearl','turquoise'].includes(g.effect))total+=g.chips;
+  else if(g.effect==='lapis')total+=h.fanshu||13;
+  else if(g.effect==='tourmaline')total+=Math.max(0,...String(Math.floor(Math.max(0,points)/100)).slice(-3).split('').map(Number));
+  else if(g.effect==='garnet')total+=garnet(h.indicators,h.garnetUra);
+  else if(g.effect==='crystal')total+=number(winning);
+  else if(g.effect==='gane')total+=Math.max(garnet(h.indicators,h.garnetUra),number(winning));
+  else if(g.effect==='black')total+=h.blackChips||0;
+  else if(g.effect==='carnelian')total+=h.carnelianChoice==='han'?-1:5;
+ }
+ if(items.some(g=>g.id==='gold')&&items.some(g=>g.id==='gold-pocchi')&&(!h.pocchiAs||h.pocchiAs==='z6'))total+=10;
+ return total*2**count('amethyst');
+}
+function blackChips(tiles,mianzi){
+ const outside=t=>t[0]==='z'||/[19]/.test(t[1]);const n=tiles.filter(outside).length;if(!n)return 5;
+ let result=n;for(const m of mianzi){if(!outside(m.slice(0,2)))continue;if(/^[mpsz]([1-9])\1\1\1$/.test(m))result+=6;else if(/^[mpsz]([1-9])\1\1(?:_!)?$/.test(m))result+=2;}
+ return result;
+}
+module.exports={SOURCES,CATALOG,BY_ID,DEFAULT,configure,rawTiles,owned,has,wildcard,number,garnet,full,modifyHan,bonus,blackChips};
 
 },
 "vendor/majiang-core/lib/xiangting.js":function(module,exports,require){
@@ -2306,6 +2362,7 @@ module.exports = {
  */
 "use strict";
 
+const Jewel = require("offline/jewels.js");
 const Majiang = {
     Shoupai: require("vendor/majiang-core/lib/shoupai.js"),
     Shan: require("vendor/majiang-core/lib/shan.js"),
@@ -2582,6 +2639,8 @@ function get_hudi(mianzi, zhuangfeng, menfeng, rule) {
         }
     }
 
+    const actualMenqian=hudi.menqian;
+    if(rule._turquoise)hudi.menqian=true;
     if (mianzi.length == 7) {
         hudi.fu = 25;
     }
@@ -2591,7 +2650,7 @@ function get_hudi(mianzi, zhuangfeng, menfeng, rule) {
             if (! hudi.pinghu)      hudi.fu +=  2;
         }
         else {
-            if (hudi.menqian)       hudi.fu += 10;
+            if (actualMenqian)      hudi.fu += 10;
             else if (hudi.fu == 20) hudi.fu  = 30;
         }
         hudi.fu = Math.ceil(hudi.fu / 10) * 10;
@@ -2920,6 +2979,11 @@ function get_defen(fu, hupai, rongpai, param) {
     }
     else {
         fanshu = hupai.map(h => h.fanshu).reduce((x, y) => x + y);
+        const adjusted=Jewel.modifyHan(param._jewelItems||[],fanshu,param.jewelChoice);
+        if(adjusted.carnelianChoice)hupai=hupai.concat({name:'カーネリアン',fanshu:adjusted.carnelianChoice==='han'?5:-1});
+        if(adjusted.han!==fanshu && (param._jewelItems||[]).some(g=>g.effect==='pearl'))hupai=hupai.concat({name:'パール翻数倍',fanshu:adjusted.han-(fanshu+(adjusted.carnelianChoice?(adjusted.carnelianChoice==='han'?5:-1):0))});
+        param={...param,_carnelianChoice:adjusted.carnelianChoice};
+        fanshu=adjusted.han;
         base   = (fanshu >= 13 && param.rule['数え役満あり'])
                                 ? 8000
                : (fanshu >= 11) ? 6000
@@ -2975,6 +3039,7 @@ function get_defen(fu, hupai, rongpai, param) {
     }
 
     return {
+        carnelianChoice:param._carnelianChoice,
         hupai:      hupai,
         fu:         fu,
         fanshu:     fanshu,
@@ -2987,7 +3052,7 @@ function get_defen(fu, hupai, rongpai, param) {
 function hule(shoupai, rongpai, param) {
     // A drawn pocchi is a wildcard only after riichi. Evaluate every legal
     // replacement and score the best, preserving the physical Jewel bonus.
-    if (!rongpai && ((param.rule.whitePocchi && shoupai.lizhi && shoupai._zimo === 'z0') || (param.rule.goldPocchi && shoupai._zimo === 'z8') || (param.rule.ganePocchi && shoupai.lizhi && shoupai._zimo === 'z9'))) {
+    if (!rongpai && Jewel.wildcard(param.rule,shoupai)) {
         const drawn=shoupai._zimo;
         const base = shoupai.clone().dapai(drawn);
         let best;
@@ -3013,34 +3078,34 @@ function hule(shoupai, rongpai, param) {
     let pre_hupai  = get_pre_hupai(param.hupai);
     let post_hupai = get_post_hupai(shoupai, rongpai,
                                     param.baopai, param.fubaopai);
-    if (param.pocchi === 'z0' && param.rule.pocchiAmethyst) post_hupai.push({name:'アメジストポッチ', fanshu:2});
-    const physical = rongpai ? shoupai.clone().zimo(rongpai) : shoupai;
-    const whiteCount = ((physical.toString().match(/z[^mps,]*/g)||[]).join('').match(/0/g)||[]).length;
-    if (!param.rule.pocchiAmethyst && whiteCount) {
-        post_hupai = post_hupai.map(y => y.name === '赤ドラ' ? {...y,fanshu:y.fanshu-whiteCount} : y).filter(y=>y.fanshu>0);
-    }
-    if(['z8','z9'].includes(param.pocchi)) post_hupai.push({name:param.pocchi==='z8'?'ゴールド發ポッチ':'ガネクリ北ポッチ',fanshu:1});
-    // Local offline variant: optional, explicit scoring extension.
-    if (param.rule.jewelBonus) {
-        const hand = rongpai ? shoupai.clone().zimo(rongpai) : shoupai;
-        const n = (hand.toString().match(/0/g) || []).length - (param.rule.pocchiAmethyst ? 0 : whiteCount) + ((hand.toString().match(/z[^mps,]*/g)||[]).join('').match(/[89]/g)||[]).length;
-        if (n) post_hupai.push({ name: 'Jewel', fanshu: n });
-    }
+    const physical=rongpai?shoupai.clone().zimo(rongpai):shoupai;
+    const items=Jewel.owned(param.rule,physical);
+    if(param.pocchi&&param.rule.gemTiles?.[param.pocchi])items.push(param.rule.gemTiles[param.pocchi]);
+    // All selected Jewels carry their own specified han, replacing red-dora
+    // treatment of the physical 0/A markers.
+    if(param.rule.gemTiles)post_hupai=post_hupai.filter(y=>y.name!=='赤ドラ');
+    const gemHan=items.reduce((n,g)=>n+g.han,0);
+    if(gemHan)post_hupai.push({name:'宝石牌',fanshu:gemHan});
+    if(items.length>=3&&param.rule.jewelBonus)pre_hupai.push({name:'Jewel',fanshu:1});
+    if(param.rule.fullJewel&&Jewel.full(param.rule,items))pre_hupai=[{name:'フルジュエル',fanshu:'*'},...pre_hupai.filter(y=>typeof y.fanshu==='string')];
+    param={...param,_jewelItems:items};
+    const scoringRule={...param.rule,_turquoise:items.some(g=>g.effect==='turquoise')};
 
-    if(param.rule.fullJewel) {
-        const text=physical.toString();
-        const allSuited=['m','p','s'].every(s=>(text.match(new RegExp(s+'[^mpsz,]*','g'))||[]).some(part=>part.includes('0')));
-        const markers=new Set(((text.match(/z[^mps,]*/g)||[]).join('').match(/[089]/g)||[]));
-        if(param.pocchi)markers.add(param.pocchi[1]);
-        if(allSuited&&markers.size>=2)pre_hupai=[{name:'フルジュエル',fanshu:'*'},...pre_hupai.filter(y=>typeof y.fanshu==='string')];
+    let candidates=hule_mianzi(shoupai,rongpai);
+    if(scoringRule._turquoise && physical._fulou.length && !physical._fulou.some(m=>(m.match(/[0-9A]/g)||[]).length===4)) {
+        const flat=physical.clone();
+        for(const m of flat._fulou)for(const n of Majiang.Shoupai.normal_pai(m).match(/[0-9]/g)||[])flat._bingpai[m[0]][+n]++;
+        flat._fulou=[];
+        candidates=candidates.concat(hule_mianzi_jiulian(flat,Majiang.Shoupai.normal_pai(rongpai||flat._zimo+'_')));
     }
-
-    for (let mianzi of hule_mianzi(shoupai, rongpai)) {
+    for (let mianzi of candidates) {
 
         let hudi  = get_hudi(mianzi, param.zhuangfeng, param.menfeng,
-                             param.rule);
+                             scoringRule);
         let hupai = get_hupai(mianzi, hudi, pre_hupai, post_hupai, param.rule);
         let rv    = get_defen(hudi.fu, hupai, rongpai, param);
+        rv.blackChips=Jewel.blackChips(Jewel.rawTiles(physical.toString()).map(p=>Majiang.Shoupai.normal_pai(p)),mianzi);
+        rv.carnelianChoice=rv.carnelianChoice||null;
 
         if (! max || rv.defen > max.defen
             || rv.defen == max.defen
@@ -3055,6 +3120,7 @@ function hule_param(param = {}) {
 
     let rv = {
         rule:           param.rule       ?? Majiang.rule(),
+        jewelChoice:    param.jewelChoice,
         zhuangfeng:     param.zhuangfeng ?? 0,
         menfeng:        param.menfeng    ?? 1,
         hupai: {
@@ -3203,7 +3269,7 @@ module.exports = class Player {
         if (this._callback) this.action_gang(gang);
 
         this._diyizimo = false;
-        if (gang.l != this._menfeng && ! gang.m.match(/^[mpsz]\d{4}$/)) {
+        if (gang.l != this._menfeng && ! gang.m.match(/^[mpsz][0-9A]{4}$/)) {
             let normalized=Majiang.Shoupai.normal_pai(gang.m[0]+gang.m.slice(-1));
             let s=normalized[0], n=+normalized[1];
             if (this.hulepai.find(p=> p == s+n)) this._neng_rong = false;
@@ -3270,5 +3336,37 @@ module.exports = class Player {
     }
 }
 
+
+},
+"offline/physical.js":function(module,exports,require){
+'use strict';
+// Separate physical identity from the logical 34 tile types. 0/A are the two
+// different selected Jewels of a five. They never add a fifth logical copy.
+module.exports=function install(M){
+ const S=M.Shoupai, originalValid=S.valid_mianzi;
+ S.valid_mianzi=m=>originalValid(S.normal_pai(m))?m:undefined;
+ function normalized(hand){const h=hand.clone();for(const s of ['m','p','s','z']){for(const n of s==='z'?[0,8,9,10]:[0,10])h._bingpai[s][n]=0;}h._zimo=h._zimo?S.normal_pai(h._zimo):null;h._fulou=h._fulou.map(m=>S.normal_pai(m));return h;}
+ function available(hand,s,n){const b=hand._bingpai[s],markers=s==='z'?({4:[9],5:[0,10],6:[8]}[n]||[]):n===5?[0,10]:[];const a=[];let specials=0;for(const i of markers){const k=b[i]||0;specials+=k;for(let j=0;j<k;j++)a.push(i===10?'A':String(i));}for(let j=0;j<b[n]-specials;j++)a.push(String(n));return a;}
+ const getDiscard=S.prototype.get_dapai;
+ S.prototype.get_dapai=function(check=true){const legal=getDiscard.call(normalized(this),check);if(!legal)return legal;const out=[];for(const p of legal){if(p.endsWith('_'))out.push(this._zimo+'_');else for(const ch of new Set(available(this,p[0],+p[1])))out.push(p[0]+ch);}return [...new Set(out)];};
+ for(const name of ['get_chi_mianzi','get_peng_mianzi','get_gang_mianzi']){
+  const original=S.prototype[name];S.prototype[name]=function(p,...args){
+   const legal=original.call(normalized(this),p?S.normal_pai(p):p,...args);if(!legal)return legal;const out=[];
+   for(const m of legal){
+    if(/^[mpsz][0-9]{3}[+=-][0-9]$/.test(m)){
+     for(const old of this._fulou)if(S.normal_pai(old)===m.slice(0,5))for(const ch of new Set(available(this,m[0],+m.slice(-1))))out.push(old+ch);
+     continue;
+    }
+    const chars=m.split(''),counts={};for(let n=1;n<=(m[0]==='z'?7:9);n++)for(const ch of available(this,m[0],n))counts[ch]=(counts[ch]||0)+1;
+    function expand(i){if(i===chars.length){out.push(chars.join(''));return;}if(!/[0-9]/.test(m[i]))return expand(i+1);
+     if(/[+=-]/.test(m[i+1]||'!')){chars[i]=p[1];return expand(i+1);}
+     for(const ch of Object.keys(counts))if(counts[ch]&&S.normal_pai(m[0]+ch)[1]===m[i]&&!(i>1&&m[i]===m[i-1]&&ch<chars[i-1])){counts[ch]--;chars[i]=ch;expand(i+1);counts[ch]++;}
+    }expand(1);
+   }
+   return [...new Set(out)];
+  };
+ }
+ return {normalized,available};
+};
 
 }};const cache={};function require(id){if(cache[id])return cache[id].exports;const m=cache[id]={exports:{}};modules[id](m,m.exports,require);return m.exports;}globalThis.JewelOffline=require("offline/engine.js");})();

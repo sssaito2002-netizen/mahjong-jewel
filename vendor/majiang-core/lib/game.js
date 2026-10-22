@@ -3,6 +3,7 @@
  */
 "use strict";
 
+const Jewel = require('../../../offline/jewels');
 const Majiang = {
     rule:    require('./rule'),
     Shoupai: require('./shoupai'),
@@ -352,7 +353,7 @@ module.exports = class Game {
 
         model.shoupai[model.lunban].fulou(fulou);
 
-        if (fulou.match(/^[mpsz]\d{4}/)) {
+        if (fulou.match(/^[mpsz][0-9A]{4}/)) {
             this._gang = fulou;
             this._n_gang[model.lunban]++;
         }
@@ -406,7 +407,7 @@ module.exports = class Game {
         this.add_paipu(paipu);
 
         if (! this._rule['カンドラ後乗せ'] ||
-            this._gang.match(/^[mpsz]\d{4}$/)) this.kaigang();
+            this._gang.match(/^[mpsz][0-9A]{4}$/)) this.kaigang();
 
         let msg = [];
         for (let l = 0; l < 4; l++) {
@@ -463,6 +464,7 @@ module.exports = class Game {
 
         let param = {
             rule:           this._rule,
+            jewelChoice:    this._reply[model.player_id[menfeng]]?.jewelChoice,
             zhuangfeng:     model.zhuangfeng,
             menfeng:        menfeng,
             hupai: {
@@ -496,6 +498,8 @@ module.exports = class Game {
                                     : shoupai.toString(),
                 baojia:     rongpai ? model.lunban : null,
                 fubaopai:   fubaopai,
+                blackChips: hule.blackChips,
+                carnelianChoice: hule.carnelianChoice,
                 pocchiAs:   hule.pocchiAs,
                 pocchi:     hule.pocchi,
                 fu:         hule.fu,
@@ -677,7 +681,7 @@ module.exports = class Game {
         }
         this._paipu.rank = rank;
 
-        const round = ! this._rule['順位点'].find(p=>p.match(/\.\d$/));
+        const round = ! this._rule['順位点'].find(p=>p.match(/\.[0-9A]$/));
         let point = [0,0,0,0];
         for (let i = 1; i < 4; i++) {
             let id = paiming[i];
@@ -818,13 +822,13 @@ module.exports = class Game {
             let reply = this.get_reply(l);
             if (reply.fulou) {
                 let m = Majiang.Shoupai.normal_pai(reply.fulou);
-                if (m.match(/^[mpsz](\d)\1\1\1/)) {
+                if (m.match(/^[mpsz]([0-9A])\1\1\1/)) {
                     if (this.get_gang_mianzi(l).find(m => m == reply.fulou)) {
                         this.say('gang', l);
                         return this.delay(()=>this.fulou(reply.fulou));
                     }
                 }
-                else if (m.match(/^[mpsz](\d)\1\1/)) {
+                else if (m.match(/^[mpsz]([0-9A])\1\1/)) {
                     if (this.get_peng_mianzi(l).find(m => m == reply.fulou)) {
                         this.say('peng', l);
                         return this.delay(()=>this.fulou(reply.fulou));
@@ -867,7 +871,7 @@ module.exports = class Game {
 
         let model = this._model;
 
-        if (this._gang.match(/^[mpsz]\d{4}$/)) {
+        if (this._gang.match(/^[mpsz][0-9A]{4}$/)) {
             return this.delay(()=>this.gangzimo(), 0);
         }
 
@@ -1004,7 +1008,7 @@ module.exports = class Game {
             && shoupai._zimo && shoupai._zimo.length > 2)
         {
             let deny = shoupai._zimo[0]
-                     + (+shoupai._zimo.match(/\d(?=[\+\=\-])/)||5);
+                     + (+shoupai._zimo.match(/[0-9A](?=[\+\=\-])/)||5);
             return shoupai.get_dapai(false)
                                 .filter(p => p.replace(/0/,'5') != deny);
         }
@@ -1064,7 +1068,7 @@ module.exports = class Game {
 
         if (! shoupai._zimo)   return false;
         if (shoupai.lizhi)     return false;
-        if (! shoupai.menqian) return false;
+        if (! shoupai.menqian && !Jewel.has(rule,shoupai,'turquoise')) return false;
 
         if (! rule['ツモ番なしリーチあり'] && paishu < 4) return false;
         if (rule['トビ終了あり'] && defen < 1000)         return false;
@@ -1073,6 +1077,7 @@ module.exports = class Game {
 
         if (p) {
             let new_shoupai = shoupai.clone().dapai(p);
+            if(!new_shoupai.menqian&&!Jewel.has(rule,new_shoupai,'turquoise'))return false;
             return Majiang.Util.xiangting(new_shoupai) == 0
                     && Majiang.Util.tingpai(new_shoupai).length > 0;
         }
@@ -1080,6 +1085,7 @@ module.exports = class Game {
             let dapai = [];
             for (let p of Game.get_dapai(rule, shoupai)) {
                 let new_shoupai = shoupai.clone().dapai(p);
+                if(!new_shoupai.menqian&&!Jewel.has(rule,new_shoupai,'turquoise'))continue;
                 if (Majiang.Util.xiangting(new_shoupai) == 0
                     && Majiang.Util.tingpai(new_shoupai).length > 0)
                 {
@@ -1094,7 +1100,7 @@ module.exports = class Game {
 
         if (p && ! neng_rong) return false;
 
-        if (!p && ((rule.whitePocchi && shoupai.lizhi && shoupai._zimo === 'z0') || (rule.goldPocchi && shoupai._zimo === 'z8') || (rule.ganePocchi && shoupai.lizhi && shoupai._zimo === 'z9'))) {
+        if (!p && Jewel.wildcard(rule,shoupai)) {
             const rv = Majiang.Util.hule(shoupai, null, {
                 rule, zhuangfeng, menfeng, hupai:{lizhi:shoupai.lizhi?1:0}, baopai:[],
                 jicun:{changbang:0,lizhibang:0}

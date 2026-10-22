@@ -7,12 +7,12 @@ test('closed riichi tsumo scores with fu, yaku and Jewel',()=>{
  const score=E.M.Util.hule(hand,null,E.M.Util.hule_param({rule:E.rule(),lizhi:1,menfeng:1}));
  assert.ok(score.defen>0);assert.ok(score.hupai.some(y=>y.name==='立直'));assert.equal(score.fenpei.reduce((a,b)=>a+b),0);
 });
-test('Jewel adds han but does not allow dora-only wins',()=>{
+test('selected lapis contributes its specified two han',()=>{
  const hand=E.M.Shoupai.fromString('m406p123s789z22555');
  const a=E.M.Util.hule(hand,null,E.M.Util.hule_param({rule:E.rule(),menfeng:1}));
- assert.ok(a.hupai.some(y=>y.name==='Jewel'));
- const b=E.M.Util.hule(hand,null,E.M.Util.hule_param({rule:E.rule({jewelBonus:false}),menfeng:1}));
- assert.equal(a.fanshu,b.fanshu+1);
+ assert.ok(a.hupai.some(y=>y.name==='宝石牌'&&y.fanshu===2));
+ const b=E.M.Util.hule(hand,null,E.M.Util.hule_param({rule:E.rule({gemSelection:[]}),menfeng:1}));
+ assert.equal(a.fanshu,b.fanshu+2);
 });
 test('bonus transfers, ranks and idempotent persistent separate totals',()=>{
  const chips=[0,0,0,0];E.transfer(chips,0,null,3);assert.deepEqual(chips,[9,-3,-3,-3]);E.transfer(chips,1,0,10);assert.deepEqual(chips,[-1,7,-3,-3]);
@@ -42,7 +42,7 @@ test('one amethyst white pocchi replaces one white in the 136-tile wall',()=>{
 test('pocchi draw after riichi substitutes a winning tile; ordinary and ron do not',()=>{
  const h=E.M.Shoupai.fromString('m12p123s123z11555z0*');
  const param=E.M.Util.hule_param({rule:E.rule(),menfeng:1,lizhi:1});
- const rv=E.M.Util.hule(h,null,param);assert.ok(rv.defen>0);assert.equal(rv.pocchiAs,'m3');assert.ok(rv.hupai.some(y=>y.name==='アメジストポッチ'));
+ const rv=E.M.Util.hule(h,null,param);assert.ok(rv.defen>0);assert.equal(rv.pocchiAs,'m3');assert.equal(rv.pocchi,'z0');
  assert.equal(E.M.Game.allow_hule(E.rule(),h,null,0,1,true),true);
  const noRiichi=h.clone();noRiichi._lizhi=false;assert.equal(E.M.Util.hule(noRiichi,null,param),undefined);
  const before=h.clone().dapai('z0');assert.equal(E.M.Util.hule(before,'z0+',param),undefined);
@@ -50,8 +50,8 @@ test('pocchi draw after riichi substitutes a winning tile; ordinary and ron do n
 });
 test('white pocchi identity survives clone, discard, pon and kan',()=>{
  const hand=new E.M.Shoupai(['z0','z5']);assert.equal(hand.clone().toString(),'z05');
- const pon=hand.get_peng_mianzi('z5+');assert.ok(pon.includes('z505+'));hand.fulou('z505+');assert.equal(hand._bingpai.z[0],0);assert.equal(hand._bingpai.z[5],0);
- const kan=new E.M.Shoupai(['z0','z5','z5','z5']);kan._zimo='z5';assert.ok(kan.get_gang_mianzi().includes('z5550'));kan.gang('z5550');assert.equal(kan._bingpai.z[0],0);
+ const pon=hand.get_peng_mianzi('z5+');const meld=pon.find(m=>m.includes('0')&&E.M.Shoupai.normal_pai(m)==='z555+');assert.ok(meld);hand.fulou(meld);assert.equal(hand._bingpai.z[0],0);assert.equal(hand._bingpai.z[5],0);
+ const kan=new E.M.Shoupai(['z0','z5','z5','z5']);kan._zimo='z5';const meldKan=kan.get_gang_mianzi().find(m=>m.includes('0')&&E.M.Shoupai.normal_pai(m)==='z5555');assert.ok(meldKan);kan.gang(meldKan);assert.equal(kan._bingpai.z[0],0);
 });
 test('full-unlock target stays fixed within an east game and adds five base chips',()=>{
  const g=new E.Game([]);assert.ok(E.UNLOCK_YAKU.includes(g._rule.unlockedYaku));const chosen=g._rule.unlockedYaku;
@@ -81,9 +81,9 @@ test('north wildcard needs riichi and garnet/crystal uses the higher chip effect
  const h=E.M.Shoupai.fromString('m12p123s123z11555z9*'),param=E.M.Util.hule_param({rule:E.rule({pocchiMode:'gane'}),menfeng:1,lizhi:1});assert.equal(E.M.Util.hule(h,null,param).pocchiAs,'m3');
  h._lizhi=false;assert.equal(E.M.Util.hule(h,null,param),undefined);
  assert.equal(E.garnetValue(['m3','z1','s4'],['p1','p8','s2']),8);assert.equal(E.garnetValue(['z1'],['z2']),0);
- const win={shoupai:'m123p456s789z99',winningTile:'m9',indicators:['m3','z1'],garnetUra:['p2','s8'],hupai:[]};assert.equal(E.bonus(win,25000),18); // two north markers: 2 * max(8,9)
- assert.equal(E.bonus({...win,winningTile:'z4'},25000),16);
- const gold={shoupai:'m123p456s789z88',hupai:[]};assert.equal(E.bonus(gold,25000),8);
+ const win={shoupai:'m123p456s789z9',winningTile:'m9',indicators:['m3','z1'],garnetUra:['p2','s8'],hupai:[]};assert.equal(E.bonus(win,25000,null,E.rule({pocchiMode:'gane'})),9); // two north markers: 2 * max(8,9)
+ assert.equal(E.bonus({...win,winningTile:'z4'},25000,null,E.rule({pocchiMode:'gane'})),8);
+ const gold={shoupai:'m123p456s789z8',hupai:[]};assert.equal(E.bonus(gold,25000,null,E.rule({pocchiMode:'gold'})),4);
 });
 test('each selected pocchi mode uses exactly one physical replacement',()=>{
  for(const mode of ['white','amethyst-white','gold','gane']){

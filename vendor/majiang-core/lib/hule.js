@@ -3,6 +3,7 @@
  */
 "use strict";
 
+const Jewel = require('../../../offline/jewels');
 const Majiang = {
     Shoupai: require('./shoupai'),
     Shan: require('./shan'),
@@ -279,6 +280,8 @@ function get_hudi(mianzi, zhuangfeng, menfeng, rule) {
         }
     }
 
+    const actualMenqian=hudi.menqian;
+    if(rule._turquoise)hudi.menqian=true;
     if (mianzi.length == 7) {
         hudi.fu = 25;
     }
@@ -288,7 +291,7 @@ function get_hudi(mianzi, zhuangfeng, menfeng, rule) {
             if (! hudi.pinghu)      hudi.fu +=  2;
         }
         else {
-            if (hudi.menqian)       hudi.fu += 10;
+            if (actualMenqian)      hudi.fu += 10;
             else if (hudi.fu == 20) hudi.fu  = 30;
         }
         hudi.fu = Math.ceil(hudi.fu / 10) * 10;
@@ -617,6 +620,11 @@ function get_defen(fu, hupai, rongpai, param) {
     }
     else {
         fanshu = hupai.map(h => h.fanshu).reduce((x, y) => x + y);
+        const adjusted=Jewel.modifyHan(param._jewelItems||[],fanshu,param.jewelChoice);
+        if(adjusted.carnelianChoice)hupai=hupai.concat({name:'カーネリアン',fanshu:adjusted.carnelianChoice==='han'?5:-1});
+        if(adjusted.han!==fanshu && (param._jewelItems||[]).some(g=>g.effect==='pearl'))hupai=hupai.concat({name:'パール翻数倍',fanshu:adjusted.han-(fanshu+(adjusted.carnelianChoice?(adjusted.carnelianChoice==='han'?5:-1):0))});
+        param={...param,_carnelianChoice:adjusted.carnelianChoice};
+        fanshu=adjusted.han;
         base   = (fanshu >= 13 && param.rule['数え役満あり'])
                                 ? 8000
                : (fanshu >= 11) ? 6000
@@ -672,6 +680,7 @@ function get_defen(fu, hupai, rongpai, param) {
     }
 
     return {
+        carnelianChoice:param._carnelianChoice,
         hupai:      hupai,
         fu:         fu,
         fanshu:     fanshu,
@@ -684,7 +693,7 @@ function get_defen(fu, hupai, rongpai, param) {
 function hule(shoupai, rongpai, param) {
     // A drawn pocchi is a wildcard only after riichi. Evaluate every legal
     // replacement and score the best, preserving the physical Jewel bonus.
-    if (!rongpai && ((param.rule.whitePocchi && shoupai.lizhi && shoupai._zimo === 'z0') || (param.rule.goldPocchi && shoupai._zimo === 'z8') || (param.rule.ganePocchi && shoupai.lizhi && shoupai._zimo === 'z9'))) {
+    if (!rongpai && Jewel.wildcard(param.rule,shoupai)) {
         const drawn=shoupai._zimo;
         const base = shoupai.clone().dapai(drawn);
         let best;
@@ -710,34 +719,34 @@ function hule(shoupai, rongpai, param) {
     let pre_hupai  = get_pre_hupai(param.hupai);
     let post_hupai = get_post_hupai(shoupai, rongpai,
                                     param.baopai, param.fubaopai);
-    if (param.pocchi === 'z0' && param.rule.pocchiAmethyst) post_hupai.push({name:'アメジストポッチ', fanshu:2});
-    const physical = rongpai ? shoupai.clone().zimo(rongpai) : shoupai;
-    const whiteCount = ((physical.toString().match(/z[^mps,]*/g)||[]).join('').match(/0/g)||[]).length;
-    if (!param.rule.pocchiAmethyst && whiteCount) {
-        post_hupai = post_hupai.map(y => y.name === '赤ドラ' ? {...y,fanshu:y.fanshu-whiteCount} : y).filter(y=>y.fanshu>0);
-    }
-    if(['z8','z9'].includes(param.pocchi)) post_hupai.push({name:param.pocchi==='z8'?'ゴールド發ポッチ':'ガネクリ北ポッチ',fanshu:1});
-    // Local offline variant: optional, explicit scoring extension.
-    if (param.rule.jewelBonus) {
-        const hand = rongpai ? shoupai.clone().zimo(rongpai) : shoupai;
-        const n = (hand.toString().match(/0/g) || []).length - (param.rule.pocchiAmethyst ? 0 : whiteCount) + ((hand.toString().match(/z[^mps,]*/g)||[]).join('').match(/[89]/g)||[]).length;
-        if (n) post_hupai.push({ name: 'Jewel', fanshu: n });
-    }
+    const physical=rongpai?shoupai.clone().zimo(rongpai):shoupai;
+    const items=Jewel.owned(param.rule,physical);
+    if(param.pocchi&&param.rule.gemTiles?.[param.pocchi])items.push(param.rule.gemTiles[param.pocchi]);
+    // All selected Jewels carry their own specified han, replacing red-dora
+    // treatment of the physical 0/A markers.
+    if(param.rule.gemTiles)post_hupai=post_hupai.filter(y=>y.name!=='赤ドラ');
+    const gemHan=items.reduce((n,g)=>n+g.han,0);
+    if(gemHan)post_hupai.push({name:'宝石牌',fanshu:gemHan});
+    if(items.length>=3&&param.rule.jewelBonus)pre_hupai.push({name:'Jewel',fanshu:1});
+    if(param.rule.fullJewel&&Jewel.full(param.rule,items))pre_hupai=[{name:'フルジュエル',fanshu:'*'},...pre_hupai.filter(y=>typeof y.fanshu==='string')];
+    param={...param,_jewelItems:items};
+    const scoringRule={...param.rule,_turquoise:items.some(g=>g.effect==='turquoise')};
 
-    if(param.rule.fullJewel) {
-        const text=physical.toString();
-        const allSuited=['m','p','s'].every(s=>(text.match(new RegExp(s+'[^mpsz,]*','g'))||[]).some(part=>part.includes('0')));
-        const markers=new Set(((text.match(/z[^mps,]*/g)||[]).join('').match(/[089]/g)||[]));
-        if(param.pocchi)markers.add(param.pocchi[1]);
-        if(allSuited&&markers.size>=2)pre_hupai=[{name:'フルジュエル',fanshu:'*'},...pre_hupai.filter(y=>typeof y.fanshu==='string')];
+    let candidates=hule_mianzi(shoupai,rongpai);
+    if(scoringRule._turquoise && physical._fulou.length && !physical._fulou.some(m=>(m.match(/[0-9A]/g)||[]).length===4)) {
+        const flat=physical.clone();
+        for(const m of flat._fulou)for(const n of Majiang.Shoupai.normal_pai(m).match(/[0-9]/g)||[])flat._bingpai[m[0]][+n]++;
+        flat._fulou=[];
+        candidates=candidates.concat(hule_mianzi_jiulian(flat,Majiang.Shoupai.normal_pai(rongpai||flat._zimo+'_')));
     }
-
-    for (let mianzi of hule_mianzi(shoupai, rongpai)) {
+    for (let mianzi of candidates) {
 
         let hudi  = get_hudi(mianzi, param.zhuangfeng, param.menfeng,
-                             param.rule);
+                             scoringRule);
         let hupai = get_hupai(mianzi, hudi, pre_hupai, post_hupai, param.rule);
         let rv    = get_defen(hudi.fu, hupai, rongpai, param);
+        rv.blackChips=Jewel.blackChips(Jewel.rawTiles(physical.toString()).map(p=>Majiang.Shoupai.normal_pai(p)),mianzi);
+        rv.carnelianChoice=rv.carnelianChoice||null;
 
         if (! max || rv.defen > max.defen
             || rv.defen == max.defen
@@ -752,6 +761,7 @@ function hule_param(param = {}) {
 
     let rv = {
         rule:           param.rule       ?? Majiang.rule(),
+        jewelChoice:    param.jewelChoice,
         zhuangfeng:     param.zhuangfeng ?? 0,
         menfeng:        param.menfeng    ?? 1,
         hupai: {

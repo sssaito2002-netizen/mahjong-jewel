@@ -8,7 +8,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),{cre
   await Promise.all(pages.map(p=>p.goto(url)));const [a,b]=pages;
   await a.locator('#online-name').fill('Alice');await a.locator('#create-room').click();await a.waitForSelector('#room-info:not([hidden])');
   const code=await a.evaluate(()=>onlineSession.room);await b.locator('#online-name').fill('Bob');await b.locator('#room-code').fill(code);await b.locator('#join-room').click();await b.waitForSelector('#room-info:not([hidden])');
-  await a.waitForFunction(()=>onlineLobby.members.length===2);await a.locator('#settings').click();await a.locator('input[value=pearl]').check();await a.locator('#apply-start').click();await b.waitForFunction(()=>onlineLobby.selection.includes('pearl'));
+  await a.waitForFunction(()=>onlineLobby.members.length===2);await a.locator('#open-table-menu').click();await a.locator('#settings').click();await a.locator('input[value=pearl]').check();await a.locator('#apply-start').click();await a.locator('#close-table-menu').click();await b.waitForFunction(()=>onlineLobby.selection.includes('pearl'));
   await a.locator('#ready-room').click();await b.locator('#ready-room').click();await a.waitForSelector('#start-room:enabled');await a.locator('#start-room').click();
   await Promise.all(pages.map(p=>p.waitForSelector('#game-area:not([hidden])')));
   for(let i=0;i<45;i++){

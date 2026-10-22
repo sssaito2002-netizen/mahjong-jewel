@@ -3,7 +3,7 @@ const M = require('../vendor/majiang-core/lib');
 const J=require('./jewels');
 const Physical=require('./physical')(M);
 const PAYOUT = [50,25,-25,-50];
-const UNLOCK_YAKU = ['平和','断幺九','一盃口','三色同順','一気通貫','混全帯幺九','七対子','対々和','三暗刻','三色同刻','混老頭','小三元','混一色','純全帯幺九','二盃口','清一色','翻牌 白','翻牌 發','翻牌 中'];
+const UNLOCK_YAKU = ['平和','断幺九','一盃口','三色同順','一気通貫','混全帯幺九','七対子','対々和','三暗刻','三色同刻','混老頭','小三元','混一色','純全帯幺九','二盃口','清一色'];
 function rule(extra={}) {
  const modes=extra.pocchiModes||[extra.pocchiMode||'amethyst-white'];
  const legacy={white:'topaz','amethyst-white':'amethyst-white',gold:'gold-pocchi',gane:'gane-pocchi'};
@@ -20,8 +20,9 @@ function actions(p,msg) {
  if(z && z.l===self || msg.fulou && msg.fulou.l===self && !msg.fulou.m.match(/\d{4}/)) {
   if(z && p.allow_hule(hand,null,!!msg.gangzimo)) add('ツモ',{hule:'-'});
   if(z) for(const m of p.get_gang_mianzi(hand)||[]) add('カン '+m,{gang:m});
-  if(z && p.allow_pingju(hand)) add('九種九牌',{pingju:true});
+  if(z && !hand.lizhi && p.allow_pingju(hand)) add('九種九牌',{pingju:true});
   for(const tile of p.get_dapai(hand)||[]) {
+   if(hand.lizhi && tile!==hand._zimo+'_')continue;
    add('打牌 '+tile,{dapai:tile});
    if(z && p.allow_lizhi(hand,tile)) add('リーチ '+tile,{dapai:tile+'*'});
   }

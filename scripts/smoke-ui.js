@@ -4,14 +4,15 @@ const {chromium}=require('playwright'),http=require('http'),fs=require('fs'),pat
  const root=path.resolve(__dirname,'..',process.env.SMOKE_ROOT||'public'),base=process.env.SMOKE_BASE||'/offline/';const server=http.createServer((req,res)=>{const urlPath=req.url.split('?')[0];const relative=process.env.SMOKE_ROOT?(urlPath.startsWith(base)?urlPath.slice(base.length):'__missing__'):urlPath;const p=path.join(root,relative||'index.html');fs.readFile(p,(e,b)=>{if(e){res.writeHead(404);return res.end();}res.setHeader('Content-Type',p.endsWith('.js')?'application/javascript':p.endsWith('.css')?'text/css':p.endsWith('.svg')?'image/svg+xml':'text/html');res.end(b);});});await new Promise(r=>server.listen(8765,'127.0.0.1',r));
  const browser=await chromium.launch({headless:true,args:['--no-sandbox']});try{
   const page=await browser.newPage({viewport:{width:390,height:844}}),errors=[],external=[];page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());page.on('request',r=>{if(!r.url().startsWith('http://127.0.0.1:8765/'))external.push(r.url());});
-  await page.goto('http://127.0.0.1:8765'+base+'index.html');assert.equal(await page.title(),'宝石麻雀');assert.equal(await page.locator('#online-entry').getAttribute('href'),'https://houseki-mahjong-online.onrender.com/');assert.equal(await page.locator('#online-entry').isVisible(),true);await page.waitForSelector('#hand button:enabled');await page.waitForFunction(()=>[...document.querySelectorAll('#hand .tile-image')].every(img=>img.complete&&img.naturalWidth>0));
+  await page.goto('http://127.0.0.1:8765'+base+'index.html');assert.equal(await page.title(),'宝石麻雀');assert.equal(await page.locator('#online-entry').getAttribute('href'),'https://houseki-mahjong-online.onrender.com/');await page.waitForSelector('#hand button:enabled');await page.waitForFunction(()=>[...document.querySelectorAll('#hand .tile-image')].every(img=>img.complete&&img.naturalWidth>0));
   assert.equal(await page.locator('#hand .tile-image').count(),14);
   await page.evaluate(()=>document.body.style.paddingTop='48px');
+  await page.locator('#open-table-menu').click();assert.equal(await page.locator('#online-entry').isVisible(),true);
   assert.ok((await page.locator('#settings').boundingBox()).y>=48);
   await page.locator('#settings').click();
   await page.locator('input[value=pearl]').check();assert.equal(await page.locator('input[value=turquoise]').isDisabled(),true);
   await page.locator('input[value=gold-pocchi]').check();await page.locator('input[value=gane-pocchi]').check();assert.equal(await page.locator('input[value=topaz]').isDisabled(),true);
-  await page.screenshot({path:'mahjong-jewel-settings.png',fullPage:true});await page.locator('#apply-start').click();await page.evaluate(()=>{game.speed=0;});await page.waitForSelector('#hand button:enabled');assert.equal(await page.evaluate(()=>tile('p0').querySelector('.jewel-tag').textContent),'アメ');assert.equal(await page.evaluate(()=>tile('pA').querySelector('.jewel-tag').textContent),'パル');
+  await page.screenshot({path:'mahjong-jewel-settings.png',fullPage:true});await page.locator('#apply-start').click();await page.evaluate(()=>{game.speed=0;document.body.style.paddingTop='';});await page.waitForSelector('#hand button:enabled');assert.equal(await page.evaluate(()=>tile('p0').querySelector('.jewel-tag').textContent),'アメ');assert.equal(await page.evaluate(()=>tile('pA').querySelector('.jewel-tag').textContent),'パル');
   for(let i=0;i<20;i++){
    if(await page.evaluate(()=>finished)){if(await page.locator('#match-complete[open]').count())await page.locator('.complete-buttons button').first().click();else await page.locator('#new').click();await page.evaluate(()=>{game.speed=0;});}
    await page.waitForFunction(()=>document.querySelector('#hand button:enabled')||document.querySelector('#actions button')||document.querySelector('#win-confirm[open]')||document.querySelector('#riichi-confirm[open]')||finished);
@@ -22,6 +23,16 @@ const {chromium}=require('playwright'),http=require('http'),fs=require('fs'),pat
   await page.waitForFunction(()=>document.querySelector('#hand button:enabled')||document.querySelector('#actions button')||document.querySelector('#win-confirm[open]')||document.querySelector('#riichi-confirm[open]')||finished);
   assert.equal(await page.locator('.seat').count(),4);assert.ok(await page.locator('.river .tile').count()>0);
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+  await page.setViewportSize({width:844,height:390});
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth&&document.documentElement.scrollHeight<=innerHeight+1));
+  for(const selector of ['#table','.hand-panel','#unlock-badge','#hand']){const box=await page.locator(selector).boundingBox();assert.ok(box&&box.x>=0&&box.y>=0&&box.x+box.width<=844&&box.y+box.height<=391,selector);}
+  assert.equal(await page.locator('#live-chips').isVisible(),false);assert.equal(await page.locator('#unlock-central').textContent(),await page.evaluate(()=>human._rule.unlockedYaku));
+  await page.locator('#open-table-menu').click();assert.equal(await page.locator('#live-chips').isVisible(),true);await page.locator('#close-table-menu').click();
+  await page.evaluate(()=>{globalThis.riichiBackup={hand:human.shoupai,pending};human.model.shoupai[human._menfeng]=E.M.Shoupai.fromString('m123p555s789z1155*').zimo('p5');pending={options:[{reply:{dapai:'p5_'}}],reply:()=>{}};renderHand();});
+  assert.equal(await page.locator('#hand button:enabled').count(),1);assert.equal(await page.locator('#hand button.draw:enabled').count(),1);assert.equal(await page.locator('#hand button[data-tile=p5]:disabled').count(),3);
+  await page.evaluate(()=>{human.model.shoupai[human._menfeng]=riichiBackup.hand;pending=riichiBackup.pending;renderHand();});
+  await page.screenshot({path:'mahjong-jewel-landscape.png',fullPage:true});await page.setViewportSize({width:390,height:844});
+  console.log('Landscape table fits viewport, external information is in menu, unlock is central, duplicate riichi hand tiles are disabled: OK');
   await page.screenshot({path:'mahjong-jewel-ui.png',fullPage:true});await page.setViewportSize({width:1200,height:1000});await page.screenshot({path:'mahjong-jewel-desktop.png',fullPage:true});
   assert.deepEqual(errors,[]);assert.deepEqual(external,[]);console.log('Mobile/desktop table, direct tile discards, 20 decisions, CPU turns, selection caps and no external requests: OK');
   if(await page.locator('#riichi-confirm').evaluate(el=>el.open))await page.locator('#riichi-next').click();

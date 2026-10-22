@@ -41,3 +41,8 @@ dialog{max-height:calc(100dvh - env(safe-area-inset-top,0px) - env(safe-area-ins
 }
 
 .table-menu-toggle{position:fixed;top:calc(8px + env(safe-area-inset-top,0px));right:calc(12px + env(safe-area-inset-right,0px))}#online-lobby{padding-top:48px}
+
+/* Keep the bonus target separate from the round/score display. */
+#unlock-badge{position:absolute;left:5%;bottom:4%;width:max-content;max-width:29%;margin:0;padding:5px 8px;z-index:2;text-align:center;box-shadow:0 2px 5px #123d2b80}#unlock-badge small{font-size:10px;letter-spacing:0}#unlock-central{font-size:clamp(12px,2.8vw,18px);line-height:1.3;overflow-wrap:anywhere}
+.center{top:34%;height:32%;justify-content:center;gap:3px}#indicators{position:absolute;left:38%;top:6%;max-width:49%;flex-wrap:wrap;justify-content:center;background:#143e30e8;border:1px solid #92a28a;border-radius:4px;padding:4px;z-index:2}#indicators:before{content:'ドラ表示';width:100%;font-size:10px;color:#f7e7b0;line-height:1.2}#indicators .tile{width:clamp(22px,5vw,30px);height:clamp(31px,7vw,42px);flex-shrink:0}
+@media(orientation:landscape){.center{left:40%;top:12%;width:20%;height:76%;gap:2px;padding:3px}#unlock-badge{left:5%;bottom:5%;max-width:25%;padding:4px 8px}#unlock-central{font-size:clamp(12px,3.5dvh,18px)}#indicators{left:63%;top:5%;max-width:25%;padding:3px;gap:2px}#indicators .tile{width:clamp(22px,6dvh,30px);height:clamp(31px,8.4dvh,42px)}.score b{font-size:clamp(11px,3.4dvh,17px)}}

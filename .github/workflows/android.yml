@@ -36,3 +36,18 @@ jobs:
           name: mahjong-jewel-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+  browser-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+      - run: npx playwright install --with-deps chromium
+      - run: node scripts/bundle.js
+      - run: node scripts/smoke-ui.js
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mobile-ui-preview
+          path: mahjong-jewel-ui.png

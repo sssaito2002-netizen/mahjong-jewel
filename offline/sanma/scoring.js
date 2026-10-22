@@ -20,7 +20,7 @@ module.exports=function(E){
   const tiers=[240,480,960,2000,3000,4000,6000,8000,10000];tier=Math.min(8,tier+summer);if(summer)base=tiers[tier];const round=n=>Math.ceil(n/1000)*1000;
   return {tier,base,label:['1翻','2翻','3翻','満貫','跳満','倍満','三倍満',yakuman?'役満':'数え役満','5倍満'][tier],ron:round(base*(dealer?6:4))+honba*1000,child:round(base*(dealer?3:1.5))+honba*1000,dealer:round(base*(dealer?3:2.5))+honba*1000};
  }
- function score({hand,ron=null,seat=1,rule:gameRule=rule(),indicators=[],ura=[],north=0,flowers=[],flowerRules=DEFAULT_FLOWERS,ippatsu=false,rinshan=false,last=false,honba=0,qianggang=false,openRiichi=false,tianhu=0,renhou=false}){
+ function score({hand,ron=null,seat=1,rule:gameRule=rule(),indicators=[],ura=[],north=0,flowers=[],flowerRules=DEFAULT_FLOWERS,ippatsu=false,rinshan=false,last=false,honba=0,qianggang=false,openRiichi=false,tianhu=0}){
   // Evaluate wildcard candidates with sanma's own seven-pairs and flower scoring too.
   if(!ron&&hand.lizhi&&Object.values(POCCHI).includes(hand._zimo)){
    const base=hand.clone().dapai(hand._zimo);let best=null,bestValue=-Infinity,bestChips=-Infinity;
@@ -32,7 +32,7 @@ module.exports=function(E){
   if(sevenPairs(physical)){
    const a=counts(physical),suits=new Set(a.map(t=>t[0])),ys=[{name:'七対子',fanshu:2}];if(hand.lizhi)ys.push({name:'立直',fanshu:1});if(!ron)ys.push({name:'門前清自摸和',fanshu:1});if(ippatsu)ys.push({name:'一発',fanshu:1});if(qianggang)ys.push({name:'槍槓',fanshu:1});if(tianhu)ys.push({name:tianhu===1?'天和':'地和',fanshu:'*'});if(a.every(t=>t[0]==='z'))ys.push({name:'字一色',fanshu:'*'});if(a.every(t=>['s2','s3','s4','s6','s8','z6'].includes(t)))ys.push({name:'緑一色',fanshu:'*'});if(a.every(t=>t[0]!=='z'&&/[19]/.test(t[1])))ys.push({name:'清老頭',fanshu:'*'});if(last)ys.push({name:ron?'河底撈魚':'海底摸月',fanshu:1});if(a.every(t=>t[0]!=='z'&&!/[19]/.test(t[1])))ys.push({name:'断幺九',fanshu:1});if(a.every(t=>t[0]==='z'||/[19]/.test(t[1])))ys.push({name:'混老頭',fanshu:2});if(suits.size===1&&!suits.has('z'))ys.push({name:'大車輪',fanshu:'*'});else if(suits.size===2&&suits.has('z'))ys.push({name:'混一色',fanshu:3});const red=J.rawTiles(physical.toString()).filter(t=>/[ps][0A]/.test(t)).length;if(red)ys.push({name:'赤・金ドラ',fanshu:red});for(const [name,ds]of [['ドラ',indicators],['裏ドラ',hand.lizhi?ura:[]]]){const n=ds.reduce((n,i)=>n+a.filter(t=>t===dora(i)).length,0);if(n)ys.push({name,fanshu:n});}const yakuman=ys.some(y=>y.fanshu==='*'),fan=ys.reduce((n,y)=>n+(typeof y.fanshu==='number'?y.fanshu:0),0);if(!r?.hupai||yakuman&&!r.damanguan||!r.damanguan&&fan>(r.fanshu||0))r={hupai:yakuman?ys.filter(y=>y.fanshu==='*'):ys,fanshu:yakuman?undefined:fan,damanguan:yakuman?1:undefined,fu:30};
   }
-  if(renhou&&!r?.hupai?.length)r={hupai:[{name:'人和',fanshu:8}],fanshu:8};if(!r?.hupai?.length)return null;
+  if(!r?.hupai?.length)return null;
   // North may only remain in kokushi or the four-winds yakuman hands.
   if(counts(physical).includes('z4')&&!r.hupai.some(y=>/国士無双|四喜/.test(y.name)))return null;
   const a=counts(physical);if(r.pocchiAs){const i=a.indexOf('z5');if(i>=0)a[i]=r.pocchiAs;}
@@ -43,7 +43,6 @@ module.exports=function(E){
   const extraUra=north*(hand.lizhi?ura.filter(i=>dora(i)==='z4').length:0);
   if(eff[2]&&flowerRules.autumn==='dora'){const n=a.filter(t=>/[ps]5/.test(t)).length*eff[2];han+=n;if(n)yaku.push({name:'秋ドラ',fanshu:n});}
   if(eff[1]&&flowerRules.summer==='han'){han+=eff[1];yaku.push({name:'夏の加翻',fanshu:eff[1]});}
-  if(renhou&&!r.damanguan){han=Math.max(8,han);yaku.push(...(yaku.some(y=>y.name==='人和')?[]:[{name:'人和（倍満保証）',fanshu:8}]));}
   if(eff[2]&&flowerRules.autumn==='double'){const fives=a.filter(t=>/[ps]5/.test(t));const n=fives.length+fives.reduce((n,t)=>n+indicators.concat(hand.lizhi?ura:[]).filter(i=>dora(i)===t).length,0);han+=n;if(n)yaku.push({name:'秋・5筒5索ドラ倍増',fanshu:n});}
   const pay=payments(han,!!r.damanguan,flowerRules.summer==='rank'?eff[1]:0,seat===0,!ron,honba),lines=[];const add=(label,amount)=>{if(amount)lines.push({label,amount});};
   add('一発',ippatsu?1:0);add('裏ドラ',extraUra+yaku.filter(y=>y.name==='裏ドラ').reduce((n,y)=>n+Number(y.fanshu),0));add('抜き北',north);const gold=J.rawTiles(physical.toString()).filter(t=>t==='p0'||t==='s0').length;add('金牌',gold*(eff[2]&&flowerRules.autumn==='double'?2:1));add('春の表示牌',['off','tulip'].includes(flowerRules.spring)?0:indicators.filter(t=>t==='f1').length*5);if(flowerRules.autumn==='chips')add('秋の祝儀',eff[2]);if(flowerRules.winter==='chips')add('冬の祝儀',eff[3]*2);

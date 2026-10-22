@@ -37,6 +37,10 @@ jobs:
             }
             const engine=await (await fetch(base+'/engine.bundle.js',{signal:AbortSignal.timeout(20000)})).text();
             assert.ok(engine.includes('bestChips'));
+            const pool=engine.match(/const UNLOCK_YAKU = \[([^\]]+)\]/);
+            assert.ok(pool);assert.equal(/翻牌|役牌|場風|自風/.test(pool[1]),false);
+            const ui=await (await fetch(base+'/ui.js',{signal:AbortSignal.timeout(20000)})).text();assert.ok(ui.includes('initTableMenu'));
+            const css=await (await fetch(base+'/style.css',{signal:AbortSignal.timeout(20000)})).text();assert.ok(css.includes('@media(orientation:landscape)'));
             const completion=await fetch(base+'/completion.js',{signal:AbortSignal.timeout(20000)});assert.equal(completion.status,200);
             const home=await fetch(base+'/home.html',{signal:AbortSignal.timeout(20000)});assert.equal(home.status,200);
             console.log('Live HTTPS health, chip tie-break fix, completion dialog, home and bundled assets: OK');

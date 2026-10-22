@@ -48,3 +48,7 @@ Androidはデバッグ署名の試作版です。実機での操作確認、途�
 ## GitHub Pages
 
 `node scripts/build-pages.js`で`_site/`に公開用ファイルだけを生成します。`pages.yml`はテスト後に`gh-pages`ブランチへ配信します。GitHubのSettings → Pages → Deploy from a branch → `gh-pages` / `(root)`で有効化してください。想定URLは https://sssaito2002-netizen.github.io/mahjong-jewel/ です。GitHub Freeの個人アカウントでは公開リポジトリが必要です。非公開リポジトリを維持する場合は対応プランか別の静的ホスティングを選択します。初回読込には通信が必要です。成績は利用した端末・ブラウザ内に保存され、APKの成績とは共有しません。ブラウザを閉じた途中対局の復元とオフライン再読込は未対応です。
+
+## ルーム対戦（試作）
+
+無料Render向けに人間2〜4人＋空席CPUのサーバーとWeb画面を追加しました。[デプロイ手順と制限](docs/online-deploy.md)を参照。サーバー再起動時の対局復元は未対応です。

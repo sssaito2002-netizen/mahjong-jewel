@@ -5,6 +5,7 @@
   "description": "Offline Mahjong Jewel Android preview",
   "scripts": {
     "start": "node server.js",
+    "start:online": "node online/server.js",
     "test": "node --test",
     "bundle": "node scripts/bundle.js"
   },

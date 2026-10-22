@@ -26,6 +26,11 @@ jobs:
         env:
           SMOKE_ROOT: _site
           SMOKE_BASE: /mahjong-jewel/
+      - name: Test three-player mode
+        run: node scripts/smoke-sanma.js
+        env:
+          SMOKE_ROOT: _site
+          SMOKE_BASE: /mahjong-jewel/
       - uses: actions/upload-artifact@v4
         with:
           name: houseki-mahjong-web

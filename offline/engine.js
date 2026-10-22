@@ -107,3 +107,4 @@ function saveResult(storage,id,results) {
  record.games.push({id,at:new Date().toISOString(),results});storage.setItem(key,JSON.stringify(record));return record;
 }
 module.exports={M,J,Physical,UNLOCK_YAKU,indicatorNumber,garnetValue,rule,actions,cpu,Player,Game,bonus,transfer,settle,saveResult};
+module.exports.Sanma=require('./sanma')(module.exports);

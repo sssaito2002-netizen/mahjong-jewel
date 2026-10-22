@@ -1,4 +1,5 @@
 'use strict';
+const analyzeDefense=require('./defense');
 // Deliberately use only our hand, discards, exposed melds and visible indicators.
 module.exports=function(M,J){
  const normal=t=>M.Shoupai.normal_pai(t).slice(0,2);
@@ -52,16 +53,7 @@ module.exports=function(M,J){
   const result={value,n,ukeire};c.cache.set(key,result);return result;
  }
  function danger(c,t){
-  t=normal(t);let risk=0;
-  for(const l of c.threats){const river=(c.model.he?.[l]?._pai||[]).map(normal);
-   if(river.includes(t))continue;
-   const events=c.model.he?.[l]?._pai||[],reach=events.findIndex(p=>p.includes('*'));
-   let r=t[0]==='z'?(c.visible.get(t)>=2?.2:.55):/[19]/.test(t[1])?.7:1;
-   if(t[0]!=='z'&&river.some(s=>s[0]===t[0]&&Math.abs(+s[1]-+t[1])===3))r*=.65;
-   // Do not assume that concealed hands or unknown tiles are safe.
-   if(reach<0)r=Math.max(r,.3);risk+=r;
-  }
-  return risk;
+  t=normal(t);return c.threats.reduce((sum,l)=>sum+analyzeDefense({tile:t,visible:c.visible,river:(c.model.he?.[l]?._pai||[]).map(normal),concealedTiles:13-3*(c.model.shoupai?.[l]?._fulou?.length||0)}).score,0);
  }
  function chooseDiscard(c,options){let best=null,value=-Infinity;
   for(const a of options){const h=c.p.shoupai.clone().dapai(a.reply.dapai),e=evaluate(c,h),risk=danger(c,a.reply.dapai);

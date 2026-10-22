@@ -1,11 +1,11 @@
 'use strict';
 const {chromium}=require('playwright'),assert=require('node:assert/strict'),{createServer}=require('../online/server');
 (async()=>{
- const {server,rooms}=createServer({turnMs:60000,callMs:60000,confirmMs:60000});await new Promise(r=>server.listen(0,'127.0.0.1',r));const url='http://127.0.0.1:'+server.address().port;
+ const {server,rooms}=createServer({accessSecureCookie:false,turnMs:60000,callMs:60000,confirmMs:60000});await new Promise(r=>server.listen(0,'127.0.0.1',r));const url='http://127.0.0.1:'+server.address().port;
  const browser=await chromium.launch({headless:true,args:['--no-sandbox']});try{
   const contexts=await Promise.all([browser.newContext({viewport:{width:390,height:844}}),browser.newContext({viewport:{width:390,height:844}})]),pages=await Promise.all(contexts.map(c=>c.newPage())),errors=[];
   for(const p of pages)p.on('pageerror',e=>errors.push(e.message));
-  await Promise.all(pages.map(p=>p.goto(url)));const [a,b]=pages;
+  await Promise.all(pages.map(p=>p.goto(url)));for(const p of pages){await p.locator('#preview-password').fill('pass1234');await p.locator('button[type=submit]').click();await p.waitForSelector('#online-name');}const [a,b]=pages;
   await a.locator('#online-name').fill('Alice');await a.locator('#create-room').click();await a.waitForSelector('#room-info:not([hidden])');
   const code=await a.evaluate(()=>onlineSession.room);await b.locator('#online-name').fill('Bob');await b.locator('#room-code').fill(code);await b.locator('#join-room').click();await b.waitForSelector('#room-info:not([hidden])');
   await a.waitForFunction(()=>onlineLobby.members.length===2);await a.locator('#open-table-menu').click();await a.locator('#settings').click();await a.locator('input[value=pearl]').check();await a.locator('#apply-start').click();await a.locator('#close-table-menu').click();await b.waitForFunction(()=>onlineLobby.selection.includes('pearl'));

@@ -1,12 +1,13 @@
 'use strict';
 const http=require('node:http'),fs=require('node:fs'),path=require('node:path'),{Rooms}=require('./rooms');
 function createServer(options={}){
- const rooms=new Rooms(options),root=path.resolve(__dirname,'../public/offline'),rates=new Map();
+ const rooms=new Rooms(options),root=path.resolve(__dirname,'../public/offline'),rates=new Map(),access=require('./access')({secureCookie:options.accessSecureCookie!==false});
  const json=(res,status,value)=>{if(res.writableEnded||res.destroyed)return;res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(value));};
  const body=async req=>{let data='';for await(const chunk of req){data+=chunk;if(data.length>8192)throw Error('送信データが大きすぎます');}return JSON.parse(data||'{}');};
  const server=http.createServer(async(req,res)=>{try{
   const url=new URL(req.url,'http://localhost');
   if(url.pathname==='/health')return json(res,200,{ok:true,rooms:rooms.rooms.size});
+  if(await access(req,res,url))return;
   if(url.pathname.startsWith('/api/')){
    // Same-origin only. Bearer tokens never appear in URLs or public lobby messages.
    if(req.headers.origin&&new URL(req.headers.origin).host!==req.headers.host)return json(res,403,{error:'別のサイトからは操作できません'});

@@ -3367,6 +3367,7 @@ module.exports=function install(M){
 },
 "offline/cpu.js":function(module,exports,require){
 'use strict';
+const analyzeDefense=require("offline/defense.js");
 // Deliberately use only our hand, discards, exposed melds and visible indicators.
 module.exports=function(M,J){
  const normal=t=>M.Shoupai.normal_pai(t).slice(0,2);
@@ -3420,16 +3421,7 @@ module.exports=function(M,J){
   const result={value,n,ukeire};c.cache.set(key,result);return result;
  }
  function danger(c,t){
-  t=normal(t);let risk=0;
-  for(const l of c.threats){const river=(c.model.he?.[l]?._pai||[]).map(normal);
-   if(river.includes(t))continue;
-   const events=c.model.he?.[l]?._pai||[],reach=events.findIndex(p=>p.includes('*'));
-   let r=t[0]==='z'?(c.visible.get(t)>=2?.2:.55):/[19]/.test(t[1])?.7:1;
-   if(t[0]!=='z'&&river.some(s=>s[0]===t[0]&&Math.abs(+s[1]-+t[1])===3))r*=.65;
-   // Do not assume that concealed hands or unknown tiles are safe.
-   if(reach<0)r=Math.max(r,.3);risk+=r;
-  }
-  return risk;
+  t=normal(t);return c.threats.reduce((sum,l)=>sum+analyzeDefense({tile:t,visible:c.visible,river:(c.model.he?.[l]?._pai||[]).map(normal),concealedTiles:13-3*(c.model.shoupai?.[l]?._fulou?.length||0)}).score,0);
  }
  function chooseDiscard(c,options){let best=null,value=-Infinity;
   for(const a of options){const h=c.p.shoupai.clone().dapai(a.reply.dapai),e=evaluate(c,h),risk=danger(c,a.reply.dapai);
@@ -3457,6 +3449,27 @@ module.exports=function(M,J){
   }
   return best?.reply||{};
  };
+};
+
+},
+"offline/defense.js":function(module,exports,require){
+'use strict';
+// A public-information combinatorial risk index, NOT a calibrated deal-in probability.
+const kinds=[];for(const s of ['m','p','s','z'])for(let n=1;n<=(s==='z'?7:9);n++)kinds.push(s+n);
+const choose2=n=>n*(n-1)/2;
+module.exports=function analyze({tile,visible,river=[],concealedTiles=13}){
+ if(river.includes(tile))return {score:0,combinations:0,single:0,pairs:0,safe:true};
+ const left=t=>Math.max(0,4-(visible.get(t)||0)),total=kinds.reduce((a,t)=>a+left(t),0),u=left(tile),s=tile[0],n=+tile[1];
+ let pairs=choose2(u); // Two copies make a shanpon wait; one copy makes a tanki wait.
+ const shapes=[];
+ if(s!=='z')for(const [a,b,other]of [[n-2,n-1,n-3],[n-1,n+1,null],[n+1,n+2,n+3]]){
+  if(a<1||b>9)continue;
+  // A ryanmen wait that also wins on an own-discarded tile is furiten.
+  if(other>=1&&other<=9&&river.includes(s+other))continue;
+  const ways=left(s+a)*left(s+b);pairs+=ways;shapes.push({tiles:[s+a,s+b],ways});
+ }
+ const h=Math.max(1,Math.min(concealedTiles,total)),single=total?h*u/total:0,pairExpectation=total>1?choose2(h)*pairs/choose2(total):0,expected=single+pairExpectation;
+ return {score:expected/(1+expected),combinations:pairs+u,single:u,pairs,shapes,safe:false};
 };
 
 }};const cache={};function require(id){if(cache[id])return cache[id].exports;const m=cache[id]={exports:{}};modules[id](m,m.exports,require);return m.exports;}globalThis.JewelOffline=require("offline/engine.js");})();

@@ -3,6 +3,11 @@ package net.mahjongjewel;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.os.Bundle;
+import android.os.Build;
+import android.graphics.Insets;
+import android.view.View;
+import android.view.WindowInsets;
+import android.widget.FrameLayout;
 import android.webkit.JavascriptInterface;
 import android.webkit.JsResult;
 import android.webkit.WebChromeClient;
@@ -42,7 +47,7 @@ public class MainActivity extends Activity {
                 if (url.startsWith(ORIGIN)) {
                     String path = request.getUrl().getPath().substring(1);
                     if (!path.contains("..") && path.startsWith("offline/")) {
-                        String type = path.endsWith(".js") ? "application/javascript" : path.endsWith(".css") ? "text/css" : "text/html";
+                        String type = path.endsWith(".js") ? "application/javascript" : path.endsWith(".css") ? "text/css" : path.endsWith(".svg") ? "image/svg+xml" : "text/html";
                         try { return new WebResourceResponse(type, "UTF-8", getAssets().open(path)); }
                         catch (IOException ignored) { }
                     }
@@ -60,7 +65,34 @@ public class MainActivity extends Activity {
                 return true;
             }
         });
-        setContentView(web);
+        // Android 15 enforces edge-to-edge: keep all controls outside system bars/cutouts.
+        FrameLayout root = new FrameLayout(this);
+        root.setBackgroundColor(0xff172024);
+        root.addView(web, new FrameLayout.LayoutParams(-1, -1));
+        if (Build.VERSION.SDK_INT >= 30) getWindow().setDecorFitsSystemWindows(false);
+        else getWindow().getDecorView().setSystemUiVisibility(
+            View.SYSTEM_UI_FLAG_LAYOUT_STABLE | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+            | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
+        root.setOnApplyWindowInsetsListener((view, insets) -> {
+            int left, top, right, bottom;
+            if (Build.VERSION.SDK_INT >= 30) {
+                Insets safe = insets.getInsets(WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout());
+                left = safe.left; top = safe.top; right = safe.right; bottom = safe.bottom;
+            } else {
+                left = insets.getSystemWindowInsetLeft(); top = insets.getSystemWindowInsetTop();
+                right = insets.getSystemWindowInsetRight(); bottom = insets.getSystemWindowInsetBottom();
+                if (Build.VERSION.SDK_INT >= 28 && insets.getDisplayCutout() != null) {
+                    left = Math.max(left, insets.getDisplayCutout().getSafeInsetLeft());
+                    top = Math.max(top, insets.getDisplayCutout().getSafeInsetTop());
+                    right = Math.max(right, insets.getDisplayCutout().getSafeInsetRight());
+                    bottom = Math.max(bottom, insets.getDisplayCutout().getSafeInsetBottom());
+                }
+            }
+            view.setPadding(left, top, right, bottom);
+            return insets;
+        });
+        setContentView(root);
+        root.requestApplyInsets();
         web.loadUrl(ORIGIN + "offline/index.html");
     }
     @Override protected void onPause() { web.onPause(); super.onPause(); }

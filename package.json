@@ -1,6 +1,6 @@
 {
   "name": "mahjong-jewel-prototype",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "private": true,
   "description": "Offline Mahjong Jewel Android preview",
   "scripts": {

@@ -28,7 +28,7 @@ function createServer(options={}){
   }
   if(!['GET','HEAD'].includes(req.method))return json(res,405,{error:'Method not allowed'});
   const relative=decodeURIComponent(url.pathname).replace(/^\/+/,''),file=path.resolve(root,relative||'online.html');if(!file.startsWith(root+path.sep))return json(res,404,{error:'Not found'});
-  const ext=path.extname(file),mime={'.html':'text/html','.js':'application/javascript','.css':'text/css','.svg':'image/svg+xml','.md':'text/plain','.txt':'text/plain'}[ext];if(!mime)return json(res,404,{error:'Not found'});
+  const ext=path.extname(file),mime={'.html':'text/html','.js':'application/javascript','.css':'text/css','.svg':'image/svg+xml','.png':'image/png','.webmanifest':'application/manifest+json','.md':'text/plain','.txt':'text/plain'}[ext];if(!mime)return json(res,404,{error:'Not found'});
   fs.readFile(file,(err,data)=>{if(err)return json(res,404,{error:'Not found'});res.writeHead(200,{'Content-Type':mime+'; charset=utf-8','Cache-Control':'no-cache','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','Content-Security-Policy':"default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'"});res.end(req.method==='HEAD'?undefined:data);});
  }catch(error){json(res,400,{error:error instanceof SyntaxError?'入力データが不正です':error.message});}});
  const cleanup=setInterval(()=>rooms.expire(),60000);cleanup.unref();server.on('close',()=>{clearInterval(cleanup);rooms.close();});return {server,rooms};

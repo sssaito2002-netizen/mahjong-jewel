@@ -5,6 +5,8 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),{cre
  const browser=await chromium.launch({headless:true,args:['--no-sandbox']});try{
   const contexts=await Promise.all([browser.newContext({viewport:{width:390,height:844}}),browser.newContext({viewport:{width:390,height:844}})]),pages=await Promise.all(contexts.map(c=>c.newPage())),errors=[];
   for(const p of pages)p.on('pageerror',e=>errors.push(e.message));
+  // Install offline assets first; the worker must leave the preview gate and APIs online.
+  await pages[0].goto(url+'/home.html');await pages[0].waitForFunction(()=>document.querySelector('#offline-storage-state')?.textContent.includes('保存済み'));assert.equal(await pages[0].evaluate(async()=>!!await caches.match(location.origin+'/online.js')),false);
   await Promise.all(pages.map(p=>p.goto(url)));for(const p of pages){await p.locator('#preview-password').fill('pass1234');await p.locator('button[type=submit]').click();await p.waitForSelector('#online-name');}const [a,b]=pages;
   await a.locator('#online-name').fill('Alice');await a.locator('#create-room').click();await a.waitForSelector('#room-info:not([hidden])');
   const code=await a.evaluate(()=>onlineSession.room);await b.locator('#online-name').fill('Bob');await b.locator('#room-code').fill(code);await b.locator('#join-room').click();await b.waitForSelector('#room-info:not([hidden])');

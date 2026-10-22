@@ -24,3 +24,12 @@ test('server-authoritative 2-human + 2-CPU east game finishes with matching resu
 test('disconnected human choices time out and CPU seats keep the game moving',async()=>{
  const {rooms,r,m,other}=prepare({turnMs:2,callMs:2,confirmMs:2});try{m.ready=other.ready=true;rooms.command(r,m,{type:'start'});const deadline=Date.now()+20000;while(r.phase!=='finished'&&Date.now()<deadline)await tick();assert.equal(r.phase,'finished');assert.ok(m.events.some(e=>e.type==='resolved'));assert.equal(r.results.reduce((s,x)=>s+x.bonusChips,0),0);}finally{rooms.close();}
 });
+test('next match keeps the room, resets readiness once and rejects stale or mid-game requests',()=>{
+ const {rooms,r,m,other}=prepare();try{
+  assert.throws(()=>rooms.command(r,m,{type:'next',matchId:'unknown'}));
+  r.phase='finished';r.matchId='finished-match';m.ready=other.ready=true;
+  rooms.command(r,m,{type:'next',matchId:r.matchId});assert.equal(r.phase,'lobby');assert.equal(m.ready,true);assert.equal(other.ready,false);
+  assert.throws(()=>rooms.command(r,m,{type:'start'}));rooms.command(r,other,{type:'next',matchId:r.matchId});rooms.command(r,m,{type:'next',matchId:r.matchId});assert.ok(r.members.every(m=>m.ready));
+  rooms.command(r,m,{type:'start'});assert.equal(r.phase,'playing');assert.notEqual(r.matchId,'finished-match');assert.throws(()=>rooms.command(r,m,{type:'next',matchId:'finished-match'}));
+ }finally{rooms.close();}
+});

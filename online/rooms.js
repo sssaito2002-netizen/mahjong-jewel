@@ -14,6 +14,11 @@ class Rooms {
   const {type}=command;
   if(type==='configure'){if(m.id!==r.host||r.phase!=='lobby')throw Error('設定変更は開始前のホストのみです');E.J.configure(command.selection);r.selection=command.selection.slice();for(const p of r.members)p.ready=false;this.lobby(r);return;}
   if(type==='ready'){if(r.phase!=='lobby')throw Error('すでに開始しています');m.ready=command.ready===true;this.lobby(r);return;}
+  if(type==='next'){
+   if(command.matchId!==r.matchId||!r.matchId||!['finished','lobby'].includes(r.phase))throw Error('次の対局の準備は終局後に行ってください');
+   if(r.phase==='finished'){r.phase='lobby';for(const member of r.members)member.ready=false;}
+   m.ready=true;this.lobby(r);return;
+  }
   if(type==='start'){if(m.id!==r.host)throw Error('開始できるのはホストです');if(r.phase!=='lobby')throw Error('すでに開始しています');if(r.members.length<2)throw Error('人間2人以上で開始できます');if(!r.members.every(p=>p.ready&&Date.now()-p.lastSeen<45000))throw Error('全員の接続と準備完了が必要です');return this.start(r);}
   if(type==='reply'){
    if(typeof command.id!=='string')throw Error('操作IDがありません');if(m.seen.has(command.id))return;

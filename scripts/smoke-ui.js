@@ -13,7 +13,7 @@ const {chromium}=require('playwright'),http=require('http'),fs=require('fs'),pat
   await page.locator('input[value=gold-pocchi]').check();await page.locator('input[value=gane-pocchi]').check();assert.equal(await page.locator('input[value=topaz]').isDisabled(),true);
   await page.screenshot({path:'mahjong-jewel-settings.png',fullPage:true});await page.locator('#apply-start').click();await page.evaluate(()=>{game.speed=0;});await page.waitForSelector('#hand button:enabled');assert.equal(await page.evaluate(()=>tile('p0').querySelector('.jewel-tag').textContent),'アメ');assert.equal(await page.evaluate(()=>tile('pA').querySelector('.jewel-tag').textContent),'パル');
   for(let i=0;i<20;i++){
-   if(await page.evaluate(()=>finished)){await page.locator('#new').click();await page.evaluate(()=>{game.speed=0;});}
+   if(await page.evaluate(()=>finished)){if(await page.locator('#match-complete[open]').count())await page.locator('.complete-buttons button').first().click();else await page.locator('#new').click();await page.evaluate(()=>{game.speed=0;});}
    await page.waitForFunction(()=>document.querySelector('#hand button:enabled')||document.querySelector('#actions button')||document.querySelector('#win-confirm[open]')||document.querySelector('#riichi-confirm[open]')||finished);
    if(await page.locator('#riichi-confirm').evaluate(el=>el.open)){await page.locator('#riichi-next').click();continue;}
    if(await page.locator('#win-confirm').evaluate(el=>el.open)){await page.locator('#win-next').click();continue;}
@@ -26,6 +26,7 @@ const {chromium}=require('playwright'),http=require('http'),fs=require('fs'),pat
   assert.deepEqual(errors,[]);assert.deepEqual(external,[]);console.log('Mobile/desktop table, direct tile discards, 20 decisions, CPU turns, selection caps and no external requests: OK');
   if(await page.locator('#riichi-confirm').evaluate(el=>el.open))await page.locator('#riichi-next').click();
   if(await page.locator('#win-confirm').evaluate(el=>el.open))await page.locator('#win-next').click();
+  await page.evaluate(()=>globalThis.MatchComplete?.close());
   // Replay the same 20-all settlement exercised through Game.hule in chip-ledger.test.js.
   await page.evaluate(()=>{game.stop();for(const p of game._players){p.onUpdate=()=>{};p.decide=()=>{};}pending=null;finished=false;localStorage.removeItem('jewel-offline-results-v1');totals();update({hule:{l:human._menfeng,baojia:null,defen:12000,hupai:[],jewelChips:20,jewelTotal:60,chipBalances:[60,-20,-20,-20],tobi:[]}},human);});
   assert.deepEqual(await page.locator('#live-chip-rows b').allTextContents(),['+60枚','−20枚','−20枚','−20枚']);
@@ -52,5 +53,14 @@ const {chromium}=require('playwright'),http=require('http'),fs=require('fs'),pat
   console.log('Win dialog holds continuation until confirmation and shows hand, points and chip payments: OK');
   console.log('Live 20-all receipt shows +60/-20/-20/-20 while finished-game totals stay separate: OK');
   await page.evaluate(()=>JewelOffline.saveResult(localStorage,'browser-persistence',JewelOffline.settle({defen:[40000,25000,20000,15000],rank:[1,2,3,4],bonusChips:[3,-1,-1,-1]})));await page.reload();await page.waitForFunction(()=>document.querySelector('#totals').textContent.includes('合計 53枚'));assert.deepEqual(errors,[]);console.log('Rank/bonus storage survives reload: OK');
+  await page.evaluate(()=>{game.stop();for(const p of game._players){p.onUpdate=()=>{};p.decide=()=>{};}const fixture={defen:[40000,25000,20000,15000],rank:[1,2,3,4],bonusChips:[60,-20,-20,-20]};game._callback(fixture);game._callback(fixture);});
+  assert.equal(await page.locator('#match-complete').evaluate(d=>d.open),true);assert.equal(await page.locator('.complete-ledger tbody tr').count(),4);assert.ok((await page.locator('.complete-summary').textContent()).includes('+110枚'));
+  assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('jewel-offline-results-v1')).games.length),2);
+  await page.screenshot({path:'mahjong-jewel-complete.png',fullPage:true});
+  await page.locator('.complete-buttons button').first().click();await page.waitForSelector('#hand button:enabled');assert.equal(await page.locator('#match-complete').evaluate(d=>d.open),false);
+  await page.evaluate(()=>{game.stop();game._callback({defen:[40000,25000,20000,15000],rank:[1,2,3,4],bonusChips:[0,0,0,0]});});
+  await page.locator('.complete-buttons button').nth(1).click();await page.waitForURL('**/home.html');assert.equal(await page.locator('.web-home-card').count(),2);assert.deepEqual(errors,[]);
+  console.log('Real end callback opens results, saves once, starts another match or returns to home: OK');
+
  }finally{await browser.close();server.close();}
 })().catch(e=>{console.error(e);process.exit(1);});

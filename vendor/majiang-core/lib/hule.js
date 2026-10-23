@@ -307,6 +307,8 @@ function get_pre_hupai(hupai) {
 
     if (hupai.lizhi == 1)   pre_hupai.push({ name: '立直', fanshu: 1 });
     if (hupai.lizhi == 2)   pre_hupai.push({ name: 'ダブル立直', fanshu: 2 });
+    if (hupai.lizhi == 3)   pre_hupai.push({ name: 'オープンリーチ', fanshu: 2 });
+    if (hupai.lizhi == 4)   pre_hupai.push({ name: 'ダブルオープンリーチ', fanshu: 3 });
     if (hupai.yifa)         pre_hupai.push({ name: '一発', fanshu: 1 });
     if (hupai.haidi == 1)   pre_hupai.push({ name: '海底摸月', fanshu: 1 });
     if (hupai.haidi == 2)   pre_hupai.push({ name: '河底撈魚', fanshu: 1 });

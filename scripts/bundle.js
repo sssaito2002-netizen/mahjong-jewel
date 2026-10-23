@@ -12,4 +12,5 @@ fs.mkdirSync(path.join(root,'public/offline'),{recursive:true});
 fs.writeFileSync(path.join(root,'public/offline/engine.bundle.js'),`/* Includes majiang-core, MIT. See THIRD_PARTY_NOTICES.md */\n(function(){const modules={${Object.entries(modules).map(([id,src])=>JSON.stringify(id)+':function(module,exports,require){\n'+src+'\n}').join(',\n')}};const cache={};function require(id){if(cache[id])return cache[id].exports;const m=cache[id]={exports:{}};modules[id](m,m.exports,require);return m.exports;}globalThis.JewelOffline=require(${JSON.stringify(entry)});globalThis.JewelRooms=require(${JSON.stringify(roomsEntry)});})();\n`);
 
 fs.copyFileSync(path.join(root,'public/offline/online.js'),path.join(root,'public/offline/nearby-client.js'));
+require('./build-sanma-rules');
 require('./build-pwa');

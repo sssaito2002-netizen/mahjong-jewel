@@ -9,7 +9,7 @@ function rule(extra={}) {
  const legacy={white:'topaz','amethyst-white':'amethyst-white',gold:'gold-pocchi',gane:'gane-pocchi'};
  const ids=extra.gemSelection||['lapis','amethyst-p','tourmaline',...modes.map(x=>legacy[x]||x)];
  const gemTiles=J.configure(ids);
- return M.rule({'場数':1,'延長戦方式':0,'本場点':1500,'切り上げ満貫あり':true,'場風牌':[1,3],'赤牌':{m:0,p:0,s:0},jewelBonus:true,fullJewel:true,...extra,
+ return M.rule({openRiichi:true,openRiichiCost:2000,'場数':1,'延長戦方式':0,'本場点':1500,'切り上げ満貫あり':true,'場風牌':[1,3],'赤牌':{m:0,p:0,s:0},jewelBonus:true,fullJewel:true,...extra,
   gemSelection:ids.slice(),gemTiles,pocchiModes:modes.slice(),whitePocchi:ids.some(x=>['topaz','amethyst-white'].includes(x)),pocchiAmethyst:ids.includes('amethyst-white'),goldPocchi:ids.includes('gold-pocchi'),ganePocchi:ids.includes('gane-pocchi')});
 }
 function actions(p,msg) {
@@ -24,7 +24,7 @@ function actions(p,msg) {
   for(const tile of p.get_dapai(hand)||[]) {
    if(hand.lizhi && tile!==hand._zimo+'_')continue;
    add('打牌 '+tile,{dapai:tile});
-   if(z && p.allow_lizhi(hand,tile)) add('リーチ '+tile,{dapai:tile+'*'});
+   if(z && p.allow_lizhi(hand,tile)){add('リーチ '+tile,{dapai:tile+'*'});if(p._rule.openRiichi&&hand.menqian&&(p.model.defen?.[p.model.player_id[self]]??0)>=(p._rule.openRiichiCost||2000))add('オープンリーチ '+tile,{dapai:tile+'*',open:true});}
   }
  } else if(msg.dapai && msg.dapai.l!==self) {
   const d=msg.dapai, tile=d.p.slice(0,2)+'_+=-'[(4+d.l-self)%4];
@@ -44,10 +44,11 @@ class Player extends M.Player {
  action(msg,callback) {
   this.message=msg;
   super.action(msg,callback);
-  if(!callback)this.onUpdate(msg,this);
+  if(!callback){this.applyOpenHands();this.onUpdate(msg,this);}
  }
+ applyOpenHands(){if(this.message.qipai)this.model.openRiichi=[false,false,false,false];for(const [l,text]of Object.entries(this.message.openHands||{})){this.model.shoupai[l]=M.Shoupai.fromString(text);this.model.openRiichi??=[false,false,false,false];this.model.openRiichi[l]=true;}}
  respond() {
-  this.onUpdate(this.message,this);
+  this.applyOpenHands();this.onUpdate(this.message,this);
   const callback=this._callback;
   if(this.message.hule&&this.confirmWin){let replied=false;return this.confirmWin(this.message.hule,()=>{if(replied)return;replied=true;callback({});},this);}
   const proceed=()=>{const opts=actions(this,this.message);if(!opts.length)return callback({});this.decide(opts,reply=>callback(reply||{}),this.message,this);};
@@ -68,8 +69,9 @@ function transfer(chips,winner,loser,n) {
 class Game extends M.Game {
  constructor(players,done,extra={}) {
   super(players,done,rule({unlockedYaku:UNLOCK_YAKU[Math.floor(Math.random()*UNLOCK_YAKU.length)],...extra}),'宝石麻雀 — Offline');
-  this.chips=[0,0,0,0];this.busted=new Set();this.bonusLog=[];
+  this._openRiichi=[false,false,false,false];this.chips=[0,0,0,0];this.busted=new Set();this.bonusLog=[];
  }
+ call_players(type,msg,timeout){if(!['hule','jieju'].includes(type)&&this._openRiichi?.some(Boolean)){const exposed={};for(let l=0;l<4;l++)if(this._openRiichi[l])exposed[l]=this.model.shoupai[l].toString();for(const m of msg)m.openHands=exposed;}return super.call_players(type,msg,timeout);}
  add_paipu(msg) {
   if(msg.qipai)msg.qipai.chipBalances=this.chips.slice();
   if(msg.hule){

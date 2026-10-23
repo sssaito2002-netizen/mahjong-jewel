@@ -232,6 +232,7 @@ module.exports = class Game {
         this._gang  = null;
 
         this._lizhi     = [ 0, 0, 0, 0 ];
+        this._openRiichi = [false,false,false,false];
         this._yifa      = [ 0, 0, 0, 0 ];
         this._n_gang    = [ 0, 0, 0, 0 ];
         this._neng_rong = [ 1, 1, 1, 1 ];
@@ -312,7 +313,9 @@ module.exports = class Game {
         else                                this._fengpai = false;
 
         if (dapai.slice(-1) == '*') {
-            this._lizhi[model.lunban] = this._diyizimo ? 2 : 1;
+            const open=this._rule.openRiichi&&this._reply?.[model.player_id[model.lunban]]?.open&&model.shoupai[model.lunban].menqian&&model.defen[model.player_id[model.lunban]]>=(this._rule.openRiichiCost||2000);
+            this._openRiichi[model.lunban]=!!open;
+            this._lizhi[model.lunban] = open?(this._diyizimo?4:3):this._diyizimo?2:1;
             this._yifa[model.lunban]  = this._rule['一発あり'];
         }
 
@@ -326,6 +329,7 @@ module.exports = class Game {
         this._dapai = dapai;
 
         let paipu = { dapai: { l: model.lunban, p: dapai } };
+        if(this._openRiichi?.[model.lunban]&&dapai.endsWith('*')){paipu.dapai.openRiichi=true;paipu.dapai.riichiCost=this._rule.openRiichiCost||2000;}
         this.add_paipu(paipu);
 
         if (this._gang) this.kaigang();
@@ -784,8 +788,9 @@ module.exports = class Game {
         }
 
         if (this._dapai.slice(-1) == '*') {
-            model.defen[model.player_id[model.lunban]] -= 1000;
-            model.lizhibang++;
+            const cost=this._openRiichi[model.lunban]?(this._rule.openRiichiCost||2000):1000;
+            model.defen[model.player_id[model.lunban]] -= cost;
+            model.lizhibang+=cost/1000;
 
             if (this._lizhi.filter(x=>x).length == 4
                 && this._rule['途中流局あり'])

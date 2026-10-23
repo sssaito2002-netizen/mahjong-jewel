@@ -14,7 +14,7 @@ module.exports=function(M,J){
   const threats=[];for(let l=0;l<4;l++)if(l!==p._menfeng&&model.shoupai?.[l]?.lizhi)threats.push(l);
   return {p,model,visible,physical,threats,left:t=>Math.max(0,4-(visible.get(normal(t))||0)),cache:new Map()};
  }
- function params(c,hand,choice){return M.Util.hule_param({rule:c.p._rule,menfeng:c.p._menfeng,zhuangfeng:c.model.zhuangfeng||0,lizhi:hand.lizhi?1:0,baopai:c.model.shan?.baopai||[],jewelChoice:choice});}
+ function params(c,hand,choice){return M.Util.hule_param({rule:c.p._rule,menfeng:c.p._menfeng,zhuangfeng:c.model.zhuangfeng||0,lizhi:hand.lizhi?(c.model.openRiichi?.[c.p._menfeng]?3:1):0,baopai:c.model.shan?.baopai||[],jewelChoice:choice});}
  function winValue(c,hand,ron=null,choice){
   const r=M.Util.hule(hand,ron,params(c,hand,choice));if(!r?.defen)return 0;
   const result={...r,shoupai:ron?hand.clone().zimo(ron.slice(0,2)).toString():hand.toString(),winningTile:ron?.slice(0,2)||hand._zimo,indicators:c.model.shan?.baopai||[],baojia:ron?0:null};

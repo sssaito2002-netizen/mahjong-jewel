@@ -75,8 +75,9 @@ module.exports = class Board {
 
     lizhi() {
         if (this._lizhi) {
-            this.defen[this.player_id[this.lunban]] -= 1000;
-            this.lizhibang++;
+            const cost=this._riichiCost||1000;
+            this.defen[this.player_id[this.lunban]] -= cost;
+            this.lizhibang+=cost/1000;
             this._lizhi = false;
         }
     }
@@ -92,6 +93,7 @@ module.exports = class Board {
         this.shoupai[dapai.l].dapai(dapai.p, false);
         this.he[dapai.l].dapai(dapai.p);
         this._lizhi = dapai.p.slice(-1) == '*';
+        this._riichiCost=dapai.riichiCost||1000;
     }
 
     fulou(fulou) {

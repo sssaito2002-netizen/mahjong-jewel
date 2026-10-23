@@ -36,6 +36,8 @@ jobs:
         env:
           SMOKE_ROOT: _site
           SMOKE_BASE: /mahjong-jewel/
+      - name: Test automatic updates and offline fallback
+        run: node scripts/smoke-updates.js
       - uses: actions/upload-artifact@v4
         with:
           name: houseki-mahjong-web

@@ -22,8 +22,9 @@ const FIELDS={
  fourNorthEight:{label:'抜き北4枚は合計8翻＋祝儀4枚＋出目金',value:false},
  stackFourSets:{label:'4華4北の100枚オールを他の祝儀に加算',value:false},
  heavenFifty:{label:'天和・地和は追加50枚オール',value:false},
- tableTobi:{label:'トバした和了祝儀2倍・トビ賞3枚',value:false},
- shuba:{label:'祝儀倍リーチ（5,000点）・複合オープン（6,000点）',value:false},
+ tableTobi:{label:'トビ賞3枚（トバした和了者へ）',value:false},
+ tobiDouble:{label:'トビが発生した和了の祝儀を2倍にする',value:false},
+ shuba:{label:'シュバリーチ：各家1ゲーム1回（5,000点／オープン複合6,000点）',value:false},
  openCost:{label:'オープンリーチ供託',values:[1000,2000],labels:['1,000点','2,000点'],value:1000},
  tableRiichi:{label:'フリテン通常リーチ可・オープンは2軒目まで',value:false},
  riichiPass:{label:'リーチ後のロン見逃しを許可（ポッチツモは強制）',value:false},
@@ -47,6 +48,6 @@ const FIELDS={
  riichiOnly:{label:'リーチのみ・リーヅモのみ役満（条件付き）',value:false},
 };
 const DEFAULTS=Object.fromEntries(Object.entries(FIELDS).map(([k,v])=>[k,v.value]));
-const PRESET={...DEFAULTS,fiveSet:'mixed',fixedUma:true,rankOnly:true,southExtension:true,agariYame:true,bustAtZero:false,honbaRon:2000,notenPool:4000,northExtended:true,nukiRon:true,flowerUra:true,tableTulip:true,autumnColoredOnly:true,instantPocchi:true,instantIncludesIppatsu:true,fourFlowerOwn:true,fourNorthEight:true,stackFourSets:true,heavenFifty:true,tableTobi:true,shuba:true,openCost:2000,tableRiichi:true,riichiPass:true,lastRiichi:false,openPushYakuman:true,fiveMangan:false,excessChips:true,doubleYakuman:true,pao:false,kokushiRobClosed:true,unlimitedKan:true,closedKanHan:true,nagashi:true,localTriplets:true,openChantaReduction:true,quadPairs:true,separateDice:true,lastDice:false,allStar:true,smallWheel:true,riichiOnly:true};
-function validate(value={}){if(!value||typeof value!=='object'||Array.isArray(value))throw Error('追加ルールが不正です');const result={...DEFAULTS};for(const [k,v]of Object.entries(value)){const f=FIELDS[k];if(!f)throw Error('未対応の追加ルールです：'+k);if(f.pending&&v===true)throw Error(f.label+'は条件確認中です');if(f.values?!f.values.includes(v):typeof v!=='boolean')throw Error(f.label+'の設定が不正です');result[k]=v;}return result;}
+const PRESET={...DEFAULTS,fiveSet:'mixed',fixedUma:true,rankOnly:true,southExtension:true,agariYame:true,bustAtZero:false,honbaRon:2000,notenPool:4000,northExtended:true,nukiRon:true,flowerUra:true,tableTulip:true,autumnColoredOnly:true,instantPocchi:true,instantIncludesIppatsu:true,fourFlowerOwn:true,fourNorthEight:true,stackFourSets:true,heavenFifty:true,tableTobi:true,tobiDouble:true,shuba:true,openCost:2000,tableRiichi:true,riichiPass:true,lastRiichi:false,openPushYakuman:true,fiveMangan:false,excessChips:true,doubleYakuman:true,pao:false,kokushiRobClosed:true,unlimitedKan:true,closedKanHan:true,nagashi:true,localTriplets:true,openChantaReduction:true,quadPairs:true,separateDice:true,lastDice:false,allStar:true,smallWheel:true,riichiOnly:true};
+function validate(value={}){if(!value||typeof value!=='object'||Array.isArray(value))throw Error('追加ルールが不正です');const result={...DEFAULTS};for(const [k,v]of Object.entries(value)){const f=FIELDS[k];if(!f)throw Error('未対応の追加ルールです：'+k);if(f.pending&&v===true)throw Error(f.label+'は条件確認中です');if(f.values?!f.values.includes(v):typeof v!=='boolean')throw Error(f.label+'の設定が不正です');result[k]=v;}if(value.tobiDouble===undefined&&value.tableTobi)result.tobiDouble=true;return result;}
 module.exports={FIELDS,DEFAULTS,PRESET,validate};

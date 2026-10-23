@@ -42,6 +42,7 @@ const FIELDS={
  openChantaReduction:{label:'チャンタ4→2翻・純チャン6→4翻の食い下がり',value:false},
  quadPairs:{label:'4・8・12枚使い七対子を4翻・8翻・本役満にする',value:false},
  lastDice:{label:'海底・河底の和了で出目金',value:true},
+ ronDicePayer:{label:'ロン時のサイコロ祝儀の支払元',value:'all',values:['all','discarder'],labels:['全員（和了者以外）','放銃者のみ']},
  separateDice:{label:'成立した出目金の条件ごとに振る（複合役満は2回）',value:false},
  allStar:{label:'門前で山の赤金5をすべて使用して出目金',value:false},
  smallWheel:{label:'小車輪：混一色七対子を6翻にする',value:false},

@@ -51,3 +51,10 @@ test('CPU spends shuba on a valuable live wait, conserves weak chances, and rela
  assert.ok(!S.cpu(position({north:2})).shuba);assert.equal(S.cpu(position({north:2,round:3})).shuba,true);
  const g=position();for(let id=1;id<3;id++)Object.defineProperty(g.hands[id],'_bingpai',{get(){throw Error('hidden hand');}});Object.defineProperty(g,'ura',{get(){throw Error('hidden ura');}});assert.equal(S.cpu(g).shuba,true);
 });
+test('ron dice payer switches common chance, separate chance and winter dice without changing per-payer amounts',()=>{
+ assert.equal(S.options().house.ronDicePayer,'all');assert.throws(()=>S.options({house:{ronDicePayer:'other'}}));
+ for(const separateDice of [false,true]){const amounts=[];for(const ronDicePayer of ['all','discarder']){const g=game({ronDicePayer,separateDice});g.points=[100000,100000,100000];g.hands[1]=h('p12z11555666777');g.flowers[1]=['f4'];g.options.flowerRules.winter='dice';g.rng=rng(77);g.beginResponses(0,'p3','react');g.win([1],0);const dice=g.summary.ledger.filter(l=>/サイコロ|出目金/.test(l.label));assert.ok(dice.length>=2);assert.ok(dice.every(l=>l.loser===(ronDicePayer==='all'?null:0)));amounts.push(dice.map(l=>l.n));assert.equal(g.summary.wins[0].diceLoser,ronDicePayer==='all'?null:0);assert.equal(g.chips.reduce((a,b)=>a+b),0);if(ronDicePayer==='discarder')assert.equal(g.chips[2],0);else assert.ok(g.chips[2]<0);}assert.deepEqual(amounts[0],amounts[1]);}
+});
+test('tsumo dice stay all-pay under either ron option, including reversed pocchi and shuba receipts',()=>{
+ for(const ronDicePayer of ['all','discarder']){const g=game({ronDicePayer});g.points=[100000,100000,100000];g.hands[0]=h('p12s123789z11555zC*');g.flowers[0]=['f4'];g.options.flowerRules.winter='dice';g.shuba[1]=true;g.shuba[2]=true;g.ippatsu[0]=true;g.options.pocchiIppatsuDice=true;g.rng=rng(87);g.win([0],null);const dice=g.summary.ledger.filter(l=>/サイコロ|出目金/.test(l.label));assert.ok(dice.length>=2);assert.ok(dice.every(l=>l.loser===null));assert.equal(g.summary.wins[0].diceLoser,null);assert.ok(g.summary.wins[0].chipFactor<0);assert.equal(g.chips.reduce((a,b)=>a+b),0);}
+});

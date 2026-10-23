@@ -53,9 +53,9 @@ const {chromium}=require('playwright'),http=require('http'),fs=require('fs'),pat
   assert.ok((await page.locator('#totals').textContent()).includes('0戦'));
   assert.ok((await page.locator('#live-chip-state').textContent()).includes('進行中'));
   notices.length=0;
-  await page.evaluate(()=>{showWin({openTrap:true,l:human._menfeng,baojia:null,shoupai:'m123p0A5s789z11555',defen:12000,fu:30,fanshu:6,hupai:[{name:'立直',fanshu:1}],jewelChips:20,jewelTotal:60,chipBalances:[60,-20,-20,-20],chipDelta:[60,-20,-20,-20],chipBreakdown:{lines:[{label:'ゴールド',amount:4,reason:''},{label:'アメジスト',amount:1,reason:''},{label:'全役解放',amount:5,reason:'翻牌 白'}],subtotal:10,multiplier:2,multipliers:['アメジスト'],perPayer:20},fenpei:[12000,-3000,-6000,-3000]},()=>{$('status').textContent='確認画面の続行を確認';},human);});
-  assert.equal(await page.locator('#win-confirm').evaluate(el=>el.open),true);
-  assert.ok(notices.some(s=>s.startsWith('手詰まり！')));assert.ok(notices.includes('ごめんね'));
+  await page.evaluate(()=>{globalThis.apologyFixture={openTrap:true,l:human._menfeng,baojia:null,shoupai:'m123p0A5s789z11555',defen:12000,fu:30,fanshu:6,hupai:[{name:'立直',fanshu:1}],jewelChips:20,jewelTotal:60,chipBalances:[60,-20,-20,-20],chipDelta:[60,-20,-20,-20],chipBreakdown:{lines:[{label:'ゴールド',amount:4,reason:''},{label:'アメジスト',amount:1,reason:''},{label:'全役解放',amount:5,reason:'翻牌 白'}],subtotal:10,multiplier:2,multipliers:['アメジスト'],perPayer:20},fenpei:[12000,-3000,-6000,-3000]};showWin(apologyFixture,()=>{$('status').textContent='確認画面の続行を確認';},human);});
+  assert.equal(await page.locator('#apology-notice').evaluate(el=>el.open),true);assert.equal(await page.locator('#win-confirm').evaluate(el=>el.open),false);await page.locator('#apology-accept').click();
+  assert.equal(await page.locator('#win-confirm').evaluate(el=>el.open),true);assert.ok(notices.some(s=>s.startsWith('手詰まり！')));
   assert.ok((await page.locator('#win-receipt').textContent()).includes('各家から20枚'));
   assert.equal(await page.locator('#win-payments tr').count(),4);
   assert.ok((await page.locator('#win-breakdown').textContent()).includes('基本祝儀 +10枚 × 2'));
@@ -63,6 +63,11 @@ const {chromium}=require('playwright'),http=require('http'),fs=require('fs'),pat
   assert.notEqual(await page.locator('#status').textContent(),'確認画面の続行を確認');
   await page.waitForTimeout(200);assert.equal(await page.locator('#win-confirm').evaluate(el=>el.open),true);
   await page.locator('#win-next').click();assert.equal(await page.locator('#status').textContent(),'確認画面の続行を確認');
+  // CPU ron also waits for acceptance or the three-second deadline.
+  await page.evaluate(()=>{globalThis.cpuWinAccepted=0;const self=human._menfeng;showWin({...apologyFixture,openTrap:false,l:(self+1)%4,baojia:self,chipDelta:[-10,10,0,0]},()=>cpuWinAccepted++,human);});
+  await page.waitForSelector('#apology-notice[open]');assert.equal(await page.locator('#win-confirm').evaluate(el=>el.open),false);await page.waitForTimeout(500);assert.equal(await page.locator('#apology-notice').evaluate(el=>el.open),true);await page.waitForSelector('#win-confirm[open]');assert.equal(await page.locator('#apology-notice').count(),0);assert.match(await page.locator('#win-title').textContent(),/CPU.*ロン/);assert.equal(await page.evaluate(()=>cpuWinAccepted),0);await page.locator('#win-next').click();assert.equal(await page.evaluate(()=>cpuWinAccepted),1);
+  await page.evaluate(()=>showWin({...apologyFixture,openTrap:false,chipDelta:[-9,9,0,0]},()=>{},human));assert.equal(await page.locator('#apology-notice').count(),0);await page.locator('#win-next').click();
+  console.log('Apology: player/CPU wins, 10-chip threshold, acceptance button and 3-second timeout preserve the win confirmation: OK');
   await page.setViewportSize({width:390,height:844});
   await page.evaluate(()=>showRiichi({l:(human._menfeng+1)%4,p:'p5*'},()=>{$('status').textContent='リーチ確認済み';},human));
   assert.equal(await page.locator('#riichi-confirm').evaluate(el=>el.open),true);

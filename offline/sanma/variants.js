@@ -23,7 +23,7 @@ const FIELDS={
  stackFourSets:{label:'4華4北の100枚オールを他の祝儀に加算',value:false},
  heavenFifty:{label:'天和・地和は追加50枚オール',value:false},
  tableTobi:{label:'トビ賞3枚（トバした和了者へ）',value:false},
- tobiDouble:{label:'トビが発生した和了の祝儀を2倍にする',value:false},
+ tobiDouble:{label:'トビが発生した局の和了祝儀を2倍（ダブロンは両者）',value:false},
  shuba:{label:'シュバリーチ：各家1ゲーム1回（5,000点／オープン複合6,000点）',value:false},
  openCost:{label:'オープンリーチ供託',values:[1000,2000],labels:['1,000点','2,000点'],value:1000},
  tableRiichi:{label:'フリテン通常リーチ可・オープンは2軒目まで',value:false},

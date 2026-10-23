@@ -405,13 +405,13 @@ module.exports = class Game {
         this._yifa     = [0,0,0,0];
 
         let zimo = model.shan.gangzimo();
+        // Reveal the new indicator before delivering or recording the rinshan draw.
+        if (! this._rule['カンドラ後乗せ'] ||
+            this._gang.match(/^[mpsz][0-9A]{4}$/)) this.kaigang();
         model.shoupai[model.lunban].zimo(zimo);
 
         let paipu = { gangzimo: { l: model.lunban, p: zimo } };
         this.add_paipu(paipu);
-
-        if (! this._rule['カンドラ後乗せ'] ||
-            this._gang.match(/^[mpsz][0-9A]{4}$/)) this.kaigang();
 
         let msg = [];
         for (let l = 0; l < 4; l++) {

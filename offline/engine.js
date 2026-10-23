@@ -81,7 +81,7 @@ class Game extends M.Game {
  qipai(shan){this._openTrap=false;this._trapTargets=[];return super.qipai(shan);}
  dapai(tile){
   const m=this.model,view={...m,openRiichi:this._openRiichi},legal=this.get_dapai(),targets=t=>openTargets(view,this._rule,m.lunban,t,l=>this._neng_rong[l]);
-  this._openTrap=!!legal?.length&&!this.allow_hule()&&!this.get_gang_mianzi()?.length&&legal.every(t=>targets(t).length>0);
+  this._openTrap=!m.shoupai[m.lunban].lizhi&&!!legal?.length&&!this.allow_hule()&&!this.get_gang_mianzi()?.length&&legal.every(t=>targets(t).length>0);
   this._trapTargets=this._openTrap?targets(tile):[];
   return super.dapai(tile);
  }

@@ -53,6 +53,7 @@ module.exports=function(M,J){
   const result={value,n,ukeire};c.cache.set(key,result);return result;
  }
  function openDanger(c,t){
+  if(c.p.shoupai.lizhi)return 0;
   return c.threats.filter(l=>c.model.openRiichi?.[l]).reduce((n,l)=>{
    const h=c.model.shoupai[l];
    // This hand is public only after an open declaration. Never inspect closed hands.

@@ -29,7 +29,7 @@ const FIELDS={
  tableRiichi:{label:'フリテン通常リーチ可・オープンは2軒目まで',value:false},
  riichiPass:{label:'リーチ後のロン見逃しを許可（ポッチツモは強制）',value:false},
  lastRiichi:{label:'ツモ番のないリーチを許可',value:true},
- openPushYakuman:{label:'オープンへの放銃は役満／非リーチ者は該当打牌を禁止',value:false},
+ openPushYakuman:{label:'オープンへの非リーチ者の放銃は役満（リーチ後は通常精算）',value:false},
  fiveMangan:{label:'夏の5倍満を許可',value:true},
  excessChips:{label:'数え役満の15翻目以降を1翻1枚の祝儀に加算',value:false},
  doubleYakuman:{label:'異なる本役満の複合を最大ダブルにする',value:false},

@@ -16,9 +16,19 @@ test('open-riichi ron is yakuman, while ordinary ron and open tsumo keep normal 
 test('forced open-riichi deal-in uses legal draw discard and cannot be passed',()=>{
  const messages=[],g=new E.Game(Array.from({length:4},()=>({action:m=>messages.push(m)})),()=>{},{gemSelection:[]});
  g._sync=true;g._paipu={log:[[]]};g._diyizimo=false;g._lizhi=[1,3,0,0];g._openRiichi=[false,true,false,false];g._yifa=[false,false,false,false];g._neng_rong=[true,true,true,true];g._n_gang=[0,0,0,0];g._hule=[];g._reply=[{},{},{},{}];
- const m=g.model;m.player_id=[0,1,2,3];m.lunban=0;m.shoupai=[hand('m123p123s789z1155*').zimo('m1'),hand('m23p123s123z11555*'),new E.M.Shoupai(),new E.M.Shoupai()];m.he=Array.from({length:4},()=>new E.M.He());m.shan=new E.M.Shan(g._rule);
- g.dapai('m1_');assert.equal(g._openTrap,true);g._reply=[{},{},{},{}];g.delay=()=>{};g.reply_dapai();assert.deepEqual(g._hule,[1]);
+ const m=g.model;m.player_id=[0,1,2,3];m.lunban=0;m.shoupai=[hand('m111999p1199z1155'),hand('m19p19s19z1234567*'),new E.M.Shoupai(),new E.M.Shoupai()];m.he=Array.from({length:4},()=>new E.M.He());m.shan=new E.M.Shan(g._rule);
+ g.dapai('z5_');assert.equal(g._openTrap,true);g._reply=[{},{},{},{}];g.delay=()=>{};g.reply_dapai();assert.deepEqual(g._hule,[1]);
 });
 test('public open targets respect permanent furiten across every wait',()=>{
  const p=player(),m=p.model;m.openRiichi=[false,true,false,false];m.shoupai[1]=hand('m23p123s123z11555*');assert.deepEqual(E.openTargets(m,p._rule,0,'m1'),[1]);m.he[1]._pai=['m4'];assert.deepEqual(E.openTargets(m,p._rule,0,'m1'),[]);
+});
+test('real ron settlement exempts established riichi but not its declaration discard',()=>{
+ for(const mode of ['none','riichi','open','declaration']){
+ const g=new E.Game([],()=>{},{gemSelection:[]});g._paipu={log:[[]]};g._status='dapai';g._hule=[1];g._diyizimo=false;g._lizhi=[mode==='none'?0:1,3,0,0];g._yifa=[false,false,false,false];g._openRiichi=[mode==='open',true,false,false];g._dapai=mode==='declaration'?'m1_*':'m1_';
+ const m=g.model;m.player_id=[0,1,2,3];m.lunban=0;m.shoupai=[hand('m123p123s789z1155'+(mode==='none'?'':'*')),hand('m23p123s789z11555*'),new E.M.Shoupai(),new E.M.Shoupai()];m.shan=new E.M.Shan(g._rule);m.shan._baopai=['m8'];m.shan._fubaopai=[];g._reply=[{},{},{},{}];let event;g.call_players=(type,msg)=>{event=msg[0];};g.hule();const h=event.hule;
+ assert.equal(!!h.damanguan,mode==='none'||mode==='declaration',mode);assert.equal(h.hupai.some(y=>y.name==='オープンリーチ放銃'),mode==='none'||mode==='declaration',mode);assert.equal(h.fenpei.reduce((a,b)=>a+b),0);
+ }
+});
+test('a forced riichi draw discard is never marked as open-riichi hand trap',()=>{
+ const g=new E.Game(Array.from({length:4},()=>({action(){}})),()=>{},{gemSelection:[]});g._sync=true;g._paipu={log:[[]]};g._diyizimo=false;g._lizhi=[1,3,0,0];g._openRiichi=[false,true,false,false];g._yifa=[false,false,false,false];g._neng_rong=[true,true,true,true];g._n_gang=[0,0,0,0];g._hule=[];g._reply=[{},{},{},{}];const m=g.model;m.player_id=[0,1,2,3];m.lunban=0;m.shoupai=[hand('m123p123s789z1155*').zimo('m1'),hand('m23p123s123z11555*'),new E.M.Shoupai(),new E.M.Shoupai()];m.he=Array.from({length:4},()=>new E.M.He());m.shan=new E.M.Shan(g._rule);g.dapai('m1_');assert.equal(g._openTrap,false);
 });

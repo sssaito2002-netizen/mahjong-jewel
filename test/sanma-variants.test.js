@@ -40,3 +40,14 @@ test('tobi chip doubling is independent of the tobi award and saved legacy optio
  assert.equal(S.options({house:{tableTobi:true}}).house.tobiDouble,true);
  const totals=[];for(const enabled of [false,true]){const g=game({tableTobi:true,tobiDouble:enabled,bustAtZero:false});g.points=[5000,50000,50000];g.hands[1]=h('p12s123789z11555');g.north[1]=1;g.beginResponses(0,'p3','react');g.win([1],0);assert.equal(g.summary.wins[0].tobiDouble,enabled);assert.equal(g.summary.ledger.find(l=>l.label==='トビ賞').n,3);totals.push(g.summary.ledger.find(l=>l.label==='和了祝儀').n);assert.equal(g.chips.reduce((a,b)=>a+b),0);}assert.ok(totals[0]>0);assert.equal(totals[1],totals[0]*2);
 });
+test('sanma open-riichi penalty exempts riichi and open riichi but not declaration tiles',()=>{
+ for(const mode of ['none','riichi','open','declaration']){const g=game({openPushYakuman:true});g.hands[0]=h('p123s123789z1155'+(mode==='none'?'':'*'));g.hands[1]=h('p23s123789z11555*');g.openRiichi=[mode==='open',true,false];g.beginResponses(0,'p1','react',null,mode==='declaration');const r=g.score(1,g.hands[1],'p1-');assert.equal(!!r.damanguan,mode==='none'||mode==='declaration',mode);}
+ const g=game({openPushYakuman:true});g.turn=0;g.phase='turn';g.hands[0]=h('p123s123789z1155*').zimo('p1');g.hands[1]=h('p23s123789z11555*');g.openRiichi=[false,true,false];g.act(S.cpu(g));assert.equal(g.last.openTrap,false);
+});
+test('CPU spends shuba on a valuable live wait, conserves weak chances, and relaxes reservation late',()=>{
+ function position({north=4,round=1,points=35000,left=60,used=false}={}){const g=game({shuba:true,tableRiichi:true});g.hands[0]=h('p12s123789z11555').zimo('p9');g.turn=0;g.phase='turn';g.north=[north,0,0];g.points[0]=points;g.round=round;g.wall=Array(left).fill('s9');g.dead=['m1','m1','m9','m9'];g.rivers=[[],[],[]];g.shubaUsed[0]=used;return g;}
+ assert.equal(S.cpu(position()).shuba,true);
+ for(const opt of [{north:0},{points:15000},{left:6},{used:true}])assert.ok(!S.cpu(position(opt)).shuba,JSON.stringify(opt));
+ assert.ok(!S.cpu(position({north:2})).shuba);assert.equal(S.cpu(position({north:2,round:3})).shuba,true);
+ const g=position();for(let id=1;id<3;id++)Object.defineProperty(g.hands[id],'_bingpai',{get(){throw Error('hidden hand');}});Object.defineProperty(g,'ura',{get(){throw Error('hidden ura');}});assert.equal(S.cpu(g).shuba,true);
+});

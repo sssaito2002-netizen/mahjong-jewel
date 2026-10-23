@@ -756,6 +756,7 @@ function hule(shoupai, rongpai, param) {
         let hudi  = get_hudi(mianzi, param.zhuangfeng, param.menfeng,
                              scoringRule);
         let hupai = get_hupai(mianzi, hudi, pre_hupai, post_hupai, param.rule);
+        if(param.openRon && rongpai)hupai=[{name:'オープンリーチ放銃',fanshu:'*'},...hupai.filter(y=>typeof y.fanshu==='string')];
         let rv    = get_defen(hudi.fu, hupai, rongpai, param);
         rv.blackChips=Jewel.blackChips(Jewel.rawTiles(physical.toString()).map(p=>Majiang.Shoupai.normal_pai(p)),mianzi);
         rv.carnelianChoice=rv.carnelianChoice||null;
@@ -774,6 +775,7 @@ function hule_param(param = {}) {
     let rv = {
         rule:           param.rule       ?? Majiang.rule(),
         jewelChoice:    param.jewelChoice,
+        openRon:        param.openRon ?? false,
         zhuangfeng:     param.zhuangfeng ?? 0,
         menfeng:        param.menfeng    ?? 1,
         hupai: {

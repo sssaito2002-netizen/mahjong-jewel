@@ -52,12 +52,21 @@ module.exports=function(M,J){
   }
   const result={value,n,ukeire};c.cache.set(key,result);return result;
  }
+ function openDanger(c,t){
+  return c.threats.filter(l=>c.model.openRiichi?.[l]).reduce((n,l)=>{
+   const h=c.model.shoupai[l];
+   // This hand is public only after an open declaration. Never inspect closed hands.
+   if((c.model.he?.[l]?._pai||[]).some(p=>normal(p)===normal(t)))return n;
+   const r=M.Util.hule(h,t.slice(0,2)+'_+=-'[(4+c.p._menfeng-l)%4],M.Util.hule_param({rule:c.p._rule,menfeng:l,zhuangfeng:c.model.zhuangfeng||0,lizhi:3}));
+   return n+(r?.defen?1:0);
+  },0);
+ }
  function danger(c,t){
   t=normal(t);return c.threats.reduce((sum,l)=>sum+analyzeDefense({tile:t,visible:c.visible,river:(c.model.he?.[l]?._pai||[]).map(normal),concealedTiles:13-3*(c.model.shoupai?.[l]?._fulou?.length||0)}).score,0);
  }
  function chooseDiscard(c,options){let best=null,value=-Infinity;
   for(const a of options){const h=c.p.shoupai.clone().dapai(a.reply.dapai),e=evaluate(c,h),risk=danger(c,a.reply.dapai);
-   const v=e.value-risk*(e.n>0?500:100);if(v>value){value=v;best=a;}
+   const v=e.value-risk*(e.n>0?500:100)-openDanger(c,a.reply.dapai)*1000000;if(v>value){value=v;best=a;}
   }return best;
  }
  function openYaku(c,h){

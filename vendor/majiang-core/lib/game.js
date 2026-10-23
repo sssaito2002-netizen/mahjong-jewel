@@ -469,6 +469,7 @@ module.exports = class Game {
         let param = {
             rule:           this._rule,
             jewelChoice:    this._reply[model.player_id[menfeng]]?.jewelChoice,
+            openRon:        !!rongpai && !!this._openRiichi[menfeng],
             zhuangfeng:     model.zhuangfeng,
             menfeng:        menfeng,
             hupai: {

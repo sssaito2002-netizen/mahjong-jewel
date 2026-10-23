@@ -30,3 +30,12 @@ test('chi that advances a hand with a concealed white triplet preserves a real y
 test('decline a yaku-less chi even if it advances the hand',()=>{
  const p=player('m239p456s78z11444',E.rule({gemSelection:[]}));assert.deepEqual(E.cpu(p,[{reply:{fulou:'m1-23'}},{reply:{}}]),{});
 });
+test('avoid a public open-riichi winning tile even when folding costs hand speed',()=>{
+ const p=player('m123p123s456789z11',E.rule({gemSelection:[]}));p.model.openRiichi=[true,false,false,false];p.model.shoupai[0]=E.M.Shoupai.fromString('m23p123s123z11555*');
+ assert.equal(E.cpu(p,discard(['m1','s4'])).dapai,'s4');
+ assert.equal(E.cpu(p,discard(['m1'])).dapai,'m1');
+});
+test('recognize special physical tiles as open-riichi winning tiles',()=>{
+ const p=player('m123p055s789z1155p5');p.model.openRiichi=[true,false,false,false];p.model.shoupai[0]=E.M.Shoupai.fromString('m123p46s123z11555*');
+ assert.equal(E.cpu(p,discard(['p0','z1'])).dapai,'z1');
+});

@@ -66,17 +66,32 @@ function transfer(chips,winner,loser,n) {
  if(loser===null){for(let id=0;id<4;id++)if(id!==winner){chips[id]-=n;chips[winner]+=n;}}
  else{chips[loser]-=n;chips[winner]+=n;}
 }
+function openTargets(model,rules,self,tile,canRon=()=>true){
+ const targets=[];for(let l=0;l<4;l++)if(l!==self&&model.openRiichi?.[l]&&canRon(l)){
+  const h=model.shoupai[l],waits=M.Util.tingpai(Physical.normalized(h))||[];
+  if((model.he[l]?._pai||[]).some(p=>waits.includes(M.Shoupai.normal_pai(p).slice(0,2))))continue;
+  const r=M.Util.hule(h,tile.slice(0,2)+'_+=-'[(4+self-l)%4],M.Util.hule_param({rule:rules,menfeng:l,zhuangfeng:model.zhuangfeng||0,lizhi:3}));if(r?.defen)targets.push(l);
+ }return targets;
+}
 class Game extends M.Game {
  constructor(players,done,extra={}) {
   super(players,done,rule({unlockedYaku:UNLOCK_YAKU[Math.floor(Math.random()*UNLOCK_YAKU.length)],...extra}),'宝石麻雀 — Offline');
   this._openRiichi=[false,false,false,false];this.chips=[0,0,0,0];this.busted=new Set();this.bonusLog=[];
  }
+ qipai(shan){this._openTrap=false;this._trapTargets=[];return super.qipai(shan);}
+ dapai(tile){
+  const m=this.model,view={...m,openRiichi:this._openRiichi},legal=this.get_dapai(),targets=t=>openTargets(view,this._rule,m.lunban,t,l=>this._neng_rong[l]);
+  this._openTrap=!!legal?.length&&!this.allow_hule()&&!this.get_gang_mianzi()?.length&&legal.every(t=>targets(t).length>0);
+  this._trapTargets=this._openTrap?targets(tile):[];
+  return super.dapai(tile);
+ }
+ reply_dapai(){if(this._openTrap)for(const l of this._trapTargets)if(this.allow_hule(l))this._reply[this.model.player_id[l]]={hule:'-'};return super.reply_dapai();}
  call_players(type,msg,timeout){if(!['hule','jieju'].includes(type)&&this._openRiichi?.some(Boolean)){const exposed={};for(let l=0;l<4;l++)if(this._openRiichi[l])exposed[l]=this.model.shoupai[l].toString();for(const m of msg)m.openHands=exposed;}return super.call_players(type,msg,timeout);}
  add_paipu(msg) {
   if(msg.qipai)msg.qipai.chipBalances=this.chips.slice();
   if(msg.hule){
    const before=this.chips.slice();
-   const h=msg.hule, ids=this.model.player_id, winner=ids[h.l], loser=h.baojia===null?null:ids[h.baojia];
+   const h=msg.hule;h.openTrap=!!this._openTrap&&h.baojia!==null;const ids=this.model.player_id, winner=ids[h.l], loser=h.baojia===null?null:ids[h.baojia];
    h.pocchiAmethyst=this._rule.pocchiAmethyst;
    h.indicators=this.model.shan.baopai;
    h.garnetUra=this.model.shan.fubaopai || [];
@@ -108,5 +123,5 @@ function saveResult(storage,id,results) {
  for(const r of results){const t=record.totals[r.id]||{rankChips:0,bonusChips:0,games:0};record.totals[r.id]={rankChips:t.rankChips+r.rankChips,bonusChips:t.bonusChips+r.bonusChips,games:t.games+1};}
  record.games.push({id,at:new Date().toISOString(),results});storage.setItem(key,JSON.stringify(record));return record;
 }
-module.exports={M,J,Physical,UNLOCK_YAKU,indicatorNumber,garnetValue,rule,actions,cpu,Player,Game,bonus,transfer,settle,saveResult};
+module.exports={M,J,Physical,UNLOCK_YAKU,indicatorNumber,garnetValue,rule,actions,cpu,openTargets,Player,Game,bonus,transfer,settle,saveResult};
 module.exports.Sanma=require('./sanma')(module.exports);

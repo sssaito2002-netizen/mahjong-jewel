@@ -14,6 +14,7 @@ function rule(extra={}) {
 }
 function actions(p,msg) {
  const out=[]; const self=p._menfeng, hand=p.shoupai;
+ if(msg.dealerChoice)return [{label:'連荘する',reply:{dealerPass:false}},{label:'親番を流す',reply:{dealerPass:true}}];
  if(!hand)return out;
  const z=msg.zimo||msg.gangzimo;
  const add=(label,reply)=>{if(reply.hule&&(J.has(p._rule,hand,'carnelian')||p._rule.gemTiles?.[msg.dapai?.p.slice(0,2)]?.effect==='carnelian')){out.push({label:label+'（祝儀優先）',reply:{...reply,jewelChoice:'chips'}});out.push({label:label+'（翻数優先）',reply:{...reply,jewelChoice:'han'}});}else out.push({label,reply});};
@@ -38,7 +39,8 @@ function actions(p,msg) {
  }
  return out;
 }
-const cpu=require('./cpu')(M,J);
+const cpuBase=require('./cpu')(M,J),shouldPassDealer=require('./dealer-choice');
+function cpu(p,options){if(options.some(o=>o.reply.dealerPass!==undefined)){const d=p.message.dealerChoice,pass=shouldPassDealer(d.points,d.self,d.round);return options.find(o=>o.reply.dealerPass===pass).reply;}return cpuBase(p,options);}
 class Player extends M.Player {
  constructor(decide,onUpdate=()=>{}) {super();this.decide=decide;this.onUpdate=onUpdate;}
  action(msg,callback) {
@@ -50,11 +52,11 @@ class Player extends M.Player {
  respond() {
   this.applyOpenHands();this.onUpdate(this.message,this);
   const callback=this._callback;
-  if(this.message.hule&&this.confirmWin){let replied=false;return this.confirmWin(this.message.hule,()=>{if(replied)return;replied=true;callback({});},this);}
   // The base Player marks an offered winning discard as passed after this handler
   // returns. Capture legal reactions before an asynchronous riichi popup yields.
   const opts=actions(this,this.message);
   const proceed=()=>{if(!opts.length)return callback({});this.decide(opts,reply=>callback(reply||{}),this.message,this);};
+  if(this.message.hule&&this.confirmWin){let replied=false;return this.confirmWin(this.message.hule,()=>{if(replied)return;replied=true;proceed();},this);}
   if(this.message.dapai?.p.endsWith('*')&&this.confirmRiichi){let replied=false;return this.confirmRiichi(this.message.dapai,()=>{if(replied)return;replied=true;proceed();},this);}
   proceed();
  }
@@ -81,7 +83,7 @@ class Game extends M.Game {
   super(players,done,rule({unlockedYaku:UNLOCK_YAKU[Math.floor(Math.random()*UNLOCK_YAKU.length)],...extra}),'宝石麻雀 — Offline');
   this._openRiichi=[false,false,false,false];this.chips=[0,0,0,0];this.busted=new Set();this.bonusLog=[];
  }
- qipai(shan){this._openTrap=false;this._trapTargets=[];return super.qipai(shan);}
+ qipai(shan){this._dealerPass=false;this._dealerChoiceOffered=false;this._openTrap=false;this._trapTargets=[];return super.qipai(shan);}
  dapai(tile){
   const m=this.model,view={...m,openRiichi:this._openRiichi},legal=this.get_dapai(),targets=t=>openTargets(view,this._rule,m.lunban,t,l=>this._neng_rong[l]);
   this._openTrap=!m.shoupai[m.lunban].lizhi&&!!legal?.length&&!this.allow_hule()&&!this.get_gang_mianzi()?.length&&legal.every(t=>targets(t).length>0);
@@ -89,7 +91,14 @@ class Game extends M.Game {
   return super.dapai(tile);
  }
  reply_dapai(){if(this._openTrap)for(const l of this._trapTargets)if(this.allow_hule(l))this._reply[this.model.player_id[l]]={hule:'-'};return super.reply_dapai();}
- call_players(type,msg,timeout){if(!['hule','jieju'].includes(type)&&this._openRiichi?.some(Boolean)){const exposed={};for(let l=0;l<4;l++)if(this._openRiichi[l])exposed[l]=this.model.shoupai[l].toString();for(const m of msg)m.openHands=exposed;}return super.call_players(type,msg,timeout);}
+ captureDealerChoice(){if(this._dealerChoiceOffered&&this.get_reply(0).dealerPass===true)this._dealerPass=true;this._dealerChoiceOffered=false;}
+ reply_hule(){this.captureDealerChoice();return super.reply_hule();}
+ reply_pingju(){this.captureDealerChoice();return super.reply_pingju();}
+ call_players(type,msg,timeout){
+  this._dealerChoiceOffered=false;
+  const eligible=this._lianzhuang&&(type==='hule'&&msg[0].hule.l===0||type==='pingju'&&msg[0].pingju.name==='荒牌平局'&&!!msg[0].pingju.shoupai[0]);
+  if(eligible){const m=this.model,points=m.defen.slice();m.player_id.forEach((id,l)=>points[id]+=this._fenpei[l]);if(points.every(n=>n>=0&&n<55000)){this._dealerChoiceOffered=true;msg[0].dealerChoice={points,self:m.player_id[0],round:m.zhuangfeng*4+m.jushu};}}
+if(!['hule','jieju'].includes(type)&&this._openRiichi?.some(Boolean)){const exposed={};for(let l=0;l<4;l++)if(this._openRiichi[l])exposed[l]=this.model.shoupai[l].toString();for(const m of msg)m.openHands=exposed;}return super.call_players(type,msg,timeout);}
  add_paipu(msg) {
   if(msg.qipai)msg.qipai.chipBalances=this.chips.slice();
   if(msg.hule){
@@ -114,7 +123,7 @@ class Game extends M.Game {
   }
   super.add_paipu(msg);
  }
- last() { if(this.model.defen.some(n=>n>=55000)) {this.cold=true;return this.delay(()=>this.jieju(),0);}return super.last(); }
+ last() { if(this._dealerPass&&this._lianzhuang){this._lianzhuang=false;if(this._status==='hule')this.model.changbang=0;}if(this.model.defen.some(n=>n>=55000)) {this.cold=true;return this.delay(()=>this.jieju(),0);}return super.last(); }
  jieju() {this._paipu.bonusChips=this.chips.slice();this._paipu.cold=!!this.cold;return super.jieju();}
 }
 function settle(paipu) {return paipu.defen.map((points,id)=>({id,points,rank:paipu.rank[id],rankChips:PAYOUT[paipu.rank[id]-1],bonusChips:paipu.bonusChips?.[id]||0}));}

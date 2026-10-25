@@ -1,7 +1,7 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict'),E=require('../offline/engine'),{M,J}=E;
 function score(text,ids,extra={},ron=null){const rule=E.rule({gemSelection:ids});return M.Util.hule(M.Shoupai.fromString(text),ron,M.Util.hule_param({rule,menfeng:1,...extra}));}
-test('selection rejects duplicate IDs and a third Jewel of the same logical tile',()=>{assert.throws(()=>J.configure(['pearl','pearl']));assert.throws(()=>J.configure(['pearl','amethyst-p','turquoise']));assert.throws(()=>J.configure(['topaz','amethyst-white','gold-pocchi','gane-pocchi']));assert.throws(()=>J.configure(['unknown']));});
+test('selection rejects duplicate IDs and a third Jewel of the same logical tile',()=>{assert.throws(()=>J.configure(['pearl','pearl']));assert.throws(()=>J.configure(['pearl','amethyst-p','turquoise']));assert.equal(Object.keys(J.configure(['topaz','amethyst-white','gold-pocchi','gane-pocchi'])).length,4);assert.throws(()=>J.configure(['unknown']));});
 test('every supported selection replaces actual tiles, keeps 136 tiles and four per base',()=>{for(const g of J.CATALOG){const rule=E.rule({gemSelection:[g.id]}),wall=new M.Shan(rule)._pai,counts={};assert.equal(wall.length,136);for(const p of wall){const n=M.Shoupai.normal_pai(p);counts[n]=(counts[n]||0)+1;}assert.equal(Object.keys(counts).length,34);assert.ok(Object.values(counts).every(n=>n===4));assert.equal(wall.filter(p=>rule.gemTiles[p]).length,1);}});
 test('amethyst and pearl 5p remain distinct through clone, draw, discard, chi, pon and kan',()=>{
  const h=new M.Shoupai(['p0','pA','p5','p5']);h._zimo='p5';assert.equal(h.clone().toString(),'p0A5p5');
@@ -48,3 +48,5 @@ test('turquoise can form open nine gates but cannot be discarded to declare open
 });
 
 require('node:assert/strict').deepEqual(require('../offline/jewels').rawTiles('m3-45,p55+5,s777=7'),['m3','m4','m5','p5','p5','p5','s7','s7','s7','s7']);
+
+test('all four Jewel pocchi replace one tile each without increasing the 136-tile wall',()=>{const ids=['topaz','amethyst-white','gold-pocchi','gane-pocchi'],rule=E.rule({gemSelection:ids}),wall=new M.Shan(rule)._pai,counts={};assert.equal(wall.length,136);for(const p of wall){const base=M.Shoupai.normal_pai(p);counts[base]=(counts[base]||0)+1;}assert.ok(Object.values(counts).every(n=>n===4));for(const id of ids){const token=Object.keys(rule.gemTiles).find(t=>rule.gemTiles[t].id===id);assert.equal(wall.filter(p=>p===token).length,1);}assert.throws(()=>J.configure([...ids,'topaz']));});

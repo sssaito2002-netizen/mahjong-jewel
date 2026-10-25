@@ -14,7 +14,7 @@ const {chromium}=require('playwright'),http=require('http'),fs=require('fs'),pat
   assert.ok((await page.locator('#settings').boundingBox()).y>=48);
   await page.locator('#settings').click();
   await page.locator('input[value=pearl]').check();assert.equal(await page.locator('input[value=turquoise]').isDisabled(),true);
-  await page.locator('input[value=gold-pocchi]').check();await page.locator('input[value=gane-pocchi]').check();assert.equal(await page.locator('input[value=topaz]').isDisabled(),true);
+  await page.locator('input[value=gold-pocchi]').check();await page.locator('input[value=gane-pocchi]').check();assert.equal(await page.locator('input[value=topaz]').isDisabled(),false);await page.locator('input[value=topaz]').check();assert.equal(await page.locator('#gem-options input:checked').evaluateAll(inputs=>inputs.filter(i=>['topaz','amethyst-white','gold-pocchi','gane-pocchi'].includes(i.value)).length),4);
   await page.screenshot({path:'mahjong-jewel-settings.png',fullPage:true});await page.locator('#jewel-start-seat').selectOption('0');await page.locator('#apply-start').click();await page.evaluate(()=>{game.speed=0;document.body.style.paddingTop='';});await page.waitForSelector('#hand button:enabled');assert.equal(await page.evaluate(()=>tile('p0').querySelector('.jewel-tag').textContent),'アメ');assert.equal(await page.evaluate(()=>tile('pA').querySelector('.jewel-tag').textContent),'パル');
   for(let i=0;i<20;i++){
    if(await page.evaluate(()=>finished)){if(await page.locator('#match-complete[open]').count())await page.locator('.complete-buttons button').first().click();else await page.locator('#new').click();await page.evaluate(()=>{game.speed=0;});}

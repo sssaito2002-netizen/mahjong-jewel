@@ -123,7 +123,7 @@ if(!['hule','jieju'].includes(type)&&this._openRiichi?.some(Boolean)){const expo
   }
   super.add_paipu(msg);
  }
- last() { if(this._dealerPass&&this._lianzhuang){this._lianzhuang=false;if(this._status==='hule')this.model.changbang=0;}if(this.model.defen.some(n=>n>=55000)) {this.cold=true;return this.delay(()=>this.jieju(),0);}return super.last(); }
+ last() { if(this._dealerPass&&this._lianzhuang){this._lianzhuang=false;this.model.changbang=0;}if(this.model.defen.some(n=>n>=55000)) {this.cold=true;return this.delay(()=>this.jieju(),0);}return super.last(); }
  jieju() {this._paipu.bonusChips=this.chips.slice();this._paipu.cold=!!this.cold;return super.jieju();}
 }
 function settle(paipu) {return paipu.defen.map((points,id)=>({id,points,rank:paipu.rank[id],rankChips:PAYOUT[paipu.rank[id]-1],bonusChips:paipu.bonusChips?.[id]||0}));}

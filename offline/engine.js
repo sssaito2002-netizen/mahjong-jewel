@@ -96,7 +96,7 @@ class Game extends M.Game {
  reply_pingju(){this.captureDealerChoice();return super.reply_pingju();}
  call_players(type,msg,timeout){
   this._dealerChoiceOffered=false;
-  const eligible=this._lianzhuang&&(type==='hule'&&msg[0].hule.l===0||type==='pingju'&&msg[0].pingju.name==='荒牌平局'&&!!msg[0].pingju.shoupai[0]);
+  const eligible=this._lianzhuang&&(type==='hule'&&this._hule.length===0||type==='pingju'&&msg[0].pingju.name==='荒牌平局'&&!!msg[0].pingju.shoupai[0]);
   if(eligible){const m=this.model,points=m.defen.slice();m.player_id.forEach((id,l)=>points[id]+=this._fenpei[l]);if(points.every(n=>n>=0&&n<55000)){this._dealerChoiceOffered=true;msg[0].dealerChoice={points,self:m.player_id[0],round:m.zhuangfeng*4+m.jushu};}}
 if(!['hule','jieju'].includes(type)&&this._openRiichi?.some(Boolean)){const exposed={};for(let l=0;l<4;l++)if(this._openRiichi[l])exposed[l]=this.model.shoupai[l].toString();for(const m of msg)m.openHands=exposed;}return super.call_players(type,msg,timeout);}
  add_paipu(msg) {

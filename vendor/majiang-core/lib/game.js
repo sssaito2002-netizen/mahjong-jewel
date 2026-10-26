@@ -503,6 +503,7 @@ module.exports = class Game {
                                     : shoupai.toString(),
                 baojia:     rongpai ? model.lunban : null,
                 fubaopai:   fubaopai,
+                badOpen:    hule.badOpen,
                 blackChips: hule.blackChips,
                 carnelianChoice: hule.carnelianChoice,
                 pocchiAs:   hule.pocchiAs,
@@ -1108,7 +1109,7 @@ module.exports = class Game {
 
         if (!p && Jewel.wildcard(rule,shoupai)) {
             const rv = Majiang.Util.hule(shoupai, null, {
-                rule, zhuangfeng, menfeng, hupai:{lizhi:shoupai.lizhi?1:0}, baopai:[],
+                rule, zhuangfeng, menfeng, hupai:{lizhi:shoupai.lizhi?1:0}, baopai:rule.jewelIndicators||[],
                 jicun:{changbang:0,lizhibang:0}
             });
             return !!(rv && rv.hupai);

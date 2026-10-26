@@ -694,9 +694,10 @@ function get_defen(fu, hupai, rongpai, param) {
 }
 
 function hule(shoupai, rongpai, param) {
+    param={...param,rule:Jewel.effectiveRule(param.rule,param.baopai?.length?param.baopai:param.rule.jewelIndicators,param.fubaopai)};
     // A drawn pocchi is a wildcard only after riichi. Evaluate every legal
     // replacement and score the best, preserving the physical Jewel bonus.
-    if (!rongpai && Jewel.wildcard(param.rule,shoupai)) {
+    if (!param.pocchi && !rongpai && Jewel.wildcard(param.rule,shoupai)) {
         const drawn=shoupai._zimo;
         const base = shoupai.clone().dapai(drawn);
         let best, bestChips = -Infinity;
@@ -709,7 +710,7 @@ function hule(shoupai, rongpai, param) {
             // actual chip receipt, preserving the original physical Jewels.
             const scored = {...rv, shoupai: shoupai.toString(), pocchiAs: suit+n,
                 winningTile: suit+n, baojia: null, indicators: param.baopai,
-                garnetUra: param.fubaopai || []};
+                garnetUra: param.fubaopai || [], fubaopai:param.fubaopai||[]};
             const chips = Jewel.bonus(scored, 0, param.rule.unlockedYaku, param.rule);
             if (!best || rv.defen > best.defen
                 || rv.defen === best.defen && chips > bestChips) {
@@ -733,13 +734,13 @@ function hule(shoupai, rongpai, param) {
                                     param.baopai, param.fubaopai);
     const physical=rongpai?shoupai.clone().zimo(rongpai):shoupai;
     const items=Jewel.owned(param.rule,physical);
-    if(param.pocchi&&param.rule.gemTiles?.[param.pocchi])items.push(param.rule.gemTiles[param.pocchi]);
+    if(param.pocchi)items.push(...Jewel.gemsFor(param.rule,param.pocchi));
     // All selected Jewels carry their own specified han, replacing red-dora
     // treatment of the physical 0/A markers.
     if(param.rule.gemTiles)post_hupai=post_hupai.filter(y=>y.name!=='赤ドラ');
     const gemHan=items.reduce((n,g)=>n+g.han,0);
     if(gemHan)post_hupai.push({name:'宝石牌',fanshu:gemHan});
-    if(items.length>=3&&param.rule.jewelBonus)pre_hupai.push({name:'Jewel',fanshu:1});
+    if((param.rule.nekkyou?new Set(items.map(g=>g.id)).size:items.length)>=3&&param.rule.jewelBonus)pre_hupai.push({name:'Jewel',fanshu:1});
     if(param.rule.fullJewel&&Jewel.full(param.rule,items))pre_hupai=[{name:'フルジュエル',fanshu:'*'},...pre_hupai.filter(y=>typeof y.fanshu==='string')];
     param={...param,_jewelItems:items};
     const scoringRule={...param.rule,_turquoise:items.some(g=>g.effect==='turquoise')};
@@ -759,6 +760,7 @@ function hule(shoupai, rongpai, param) {
         if(param.openRon && rongpai)hupai=[{name:'オープンリーチ放銃',fanshu:'*'},...hupai.filter(y=>typeof y.fanshu==='string')];
         let rv    = get_defen(hudi.fu, hupai, rongpai, param);
         rv.blackChips=Jewel.blackChips(Jewel.rawTiles(physical.toString()).map(p=>Majiang.Shoupai.normal_pai(p)),mianzi);
+        rv.badOpen=param.rule.nekkyou&&param.hupai.lizhi>=3&&mianzi.some(m=>/!/.test(m)&&(/^[mpsz](\d)\1(?:\1)?[+=_\-]!$/.test(m)||/^[mps]\d\d[+=_\-]!\d$/.test(m)||/^[mps](?:123[+=_\-]!|7[+=_\-]!89)$/.test(m)));
         rv.carnelianChoice=rv.carnelianChoice||null;
 
         if (! max || rv.defen > max.defen

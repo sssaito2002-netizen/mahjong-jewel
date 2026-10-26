@@ -9,10 +9,13 @@ const rows=[
  ['aquamarine','アクアマリン','s5',1,'fixed',2,'v5'],['garnet','ガーネット','s5',2,'garnet',0,'v4'],
  ['crystal','クリスタル','s5',2,'crystal',0,'v2'],['tourmaline','トルマリン','s5',2,'tourmaline',0,'v5'],
  ['amethyst-s','アメジスト','s5',2,'amethyst',1,'v6'],
+ ['turquoise-m','ターコイズ五萬','m5',0,'turquoise',4,'v4'],
  ['topaz','トパーズ白ポッチ','z5',0,'fixed',1,'initial'],['amethyst-white','アメジスト白ポッチ','z5',0,'amethyst',1,'v2'],
  ['gold-pocchi','ゴールド發ポッチ','z6',0,'fixed',4,'v3'],['gane-pocchi','ガネクリ北ポッチ','z4',0,'gane',0,'v6']
 ];
 const CATALOG=rows.map(([id,name,base,han,effect,chips,source])=>({id,name,base,han,effect,chips,source:SOURCES[source],pocchi:base[0]==='z'}));
+const NEKKYOU_SELECTION=['lapis','turquoise-m','amethyst-p','pearl','amethyst-s','tourmaline','topaz','amethyst-white','gold-pocchi','gane-pocchi'];
+const EVENT_YAKU=['混全帯幺九','純全帯幺九','一盃口','二盃口','三色同順','三色同刻','混一色','七対子','一気通貫','対々和','三暗刻'];
 const BY_ID=Object.fromEntries(CATALOG.map(g=>[g.id,g]));
 const DEFAULT=['lapis','amethyst-p','tourmaline','amethyst-white'];
 function configure(ids){
@@ -23,25 +26,30 @@ function configure(ids){
  return tiles;
 }
 function rawTiles(text){const out=[];for(const part of text.replace(/[+=_*!-]/g,'').match(/[mpsz][0-9A-C]+/g)||[])for(const n of part.slice(1))out.push(part[0]+n);return out;}
-function owned(rule,hand){return rawTiles(typeof hand==='string'?hand:hand.toString()).map(t=>rule.gemTiles?.[t]).filter(Boolean);}
+function effectiveRule(rule,indicators=rule.jewelIndicators||[],ura=[]){
+ if(!rule.nekkyou)return rule;const inherited={};for(const t of [...indicators,...(ura||[])]){const g=rule.gemTiles?.[t];if(g){const list=inherited[g.base]||=[];if(!list.some(x=>x.id===g.id))list.push(g);}}
+ return {...rule,jewelInherited:inherited};
+}
+function gemsFor(rule,t){const physical=rule.gemTiles?.[t];if(physical)return [physical];return rule.nekkyou?(rule.jewelInherited||effectiveRule(rule).jewelInherited)?.[t]||[]:[];}
+function owned(rule,hand){return rawTiles(typeof hand==='string'?hand:hand.toString()).flatMap(t=>gemsFor(rule,t));}
 function has(rule,hand,effect){return owned(rule,hand).some(g=>g.effect===effect);}
-function wildcard(rule,hand){const g=rule.gemTiles?.[hand._zimo];return !!g?.pocchi && (g.id==='gold-pocchi'||hand.lizhi);}
+function wildcard(rule,hand){return gemsFor(rule,hand._zimo).some(g=>g.pocchi&&(g.id==='gold-pocchi'||hand.lizhi));}
 function number(p){return p&&p[0]!=='z'?(p[1]==='0'||p[1]==='A'?5:+p[1]):0;}
 function garnet(indicators=[],ura=[]){return Math.max(0,...indicators.map((p,i)=>number(p[0]==='z'?ura[i]:p)));}
 function full(rule,items){const numbers=Object.values(rule.gemTiles||{}).filter(g=>!g.pocchi);return numbers.length>0&&numbers.every(g=>items.some(x=>x.id===g.id))&&new Set(items.filter(g=>g.pocchi).map(g=>g.id)).size>=2;}
 function modifyHan(items,han,choice){const car=items.some(g=>g.effect==='carnelian');const mode=car&&(choice==='han'||han<=1)?'han':'chips';if(car)han+=mode==='han'?5:-1;const pearls=items.filter(g=>g.effect==='pearl').length;return {han:han*2**pearls,carnelianChoice:car?mode:null};}
 function bonusBreakdown(h,points,unlockedYaku,rule){
- const items=owned(rule,h.shoupai),lines=[];
+ rule=effectiveRule(rule,h.indicators||rule.jewelIndicators,h.fubaopai||[]);const items=owned(rule,h.shoupai),lines=[];
  const add=(label,amount,reason='')=>lines.push({label,amount,reason});
  for(const y of h.hupai||[])if(['一発','裏ドラ'].includes(y.name))add(y.name,+y.fanshu||0);
- if(h.damanguan)add('役満祝儀',(h.baojia==null?10:20)*h.damanguan,h.damanguan+'倍役満');
+ if(h.damanguan)add('役満祝儀',(h.baojia==null?(rule.nekkyou?20:10):(rule.nekkyou?40:20))*h.damanguan,h.damanguan+'倍役満');
  else if(h.fanshu>=13)add('数え役満祝儀',h.baojia==null?5:10);
- if((h.hupai||[]).some(y=>y.name===unlockedYaku))add('祝儀手役',5,unlockedYaku);
+ if(rule.nekkyou){for(const y of h.hupai||[])if(EVENT_YAKU.includes(y.name))add('祝儀手役',5,y.name);if((h.hupai||[]).some(y=>y.name==='清一色'))add('祝儀手役',5,/[,]/.test(h.shoupai)?'副露清一色':'門前清一色');if(h.badOpen)add('愚形オープン',5);}else if((h.hupai||[]).some(y=>y.name===unlockedYaku))add('祝儀手役',5,unlockedYaku);
  const winning=h.pocchiAs||h.winningTile,garnetValue=garnet(h.indicators,h.garnetUra),crystalValue=number(winning);
  for(const g of items){let amount=0,reason='';
   if(['fixed','amethyst','pearl','turquoise'].includes(g.effect))amount=g.chips;
   else if(g.effect==='lapis'){amount=h.fanshu||13;reason='最終'+amount+'翻';}
-  else if(g.effect==='tourmaline'){amount=Math.max(0,...String(Math.floor(Math.max(0,points)/100)).slice(-3).split('').map(Number));reason='和了前'+points+'点の万・千・百の位の最大値';}
+  else if(g.effect==='tourmaline'){amount=rule.nekkyou&&points===0?10:Math.max(0,...String(Math.floor(Math.max(0,points)/100)).slice(-3).split('').map(Number));reason='和了前'+points+'点の万・千・百の位の最大値';}
   else if(g.effect==='garnet'){amount=garnetValue;reason='表示牌の最大数字（字牌は裏表示を参照）';}
   else if(g.effect==='crystal'){amount=crystalValue;reason='和了牌の数字（字牌は0）';}
   else if(g.effect==='gane'){amount=Math.max(garnetValue,crystalValue);reason='ガーネット'+garnetValue+'／クリスタル'+crystalValue+'の大きい方';}
@@ -50,7 +58,7 @@ function bonusBreakdown(h,points,unlockedYaku,rule){
   add(g.name,amount,reason);
  }
  if(items.some(g=>g.id==='gold')&&items.some(g=>g.id==='gold-pocchi')&&(!h.pocchiAs||h.pocchiAs==='z6'))add('ゴールド＋ゴールド發ポッチ',10);
- const subtotal=lines.reduce((n,l)=>n+l.amount,0),amethysts=items.filter(g=>g.effect==='amethyst'),multiplier=2**amethysts.length;
+ const subtotal=lines.reduce((n,l)=>n+l.amount,0),amethysts=items.filter(g=>g.effect==='amethyst'),multiplier=rule.nekkyou?1+amethysts.length:2**amethysts.length;
  return {lines,subtotal,multiplier,multipliers:amethysts.map(g=>g.name),perPayer:subtotal*multiplier};
 }
 function bonus(h,points,unlockedYaku,rule){return bonusBreakdown(h,points,unlockedYaku,rule).perPayer;}
@@ -59,4 +67,4 @@ function blackChips(tiles,mianzi){
  let result=n;for(const m of mianzi){if(!outside(m.slice(0,2)))continue;if(/^[mpsz]([1-9])\1\1\1$/.test(m))result+=6;else if(/^[mpsz]([1-9])\1\1(?:_!)?$/.test(m))result+=2;}
  return result;
 }
-module.exports={SOURCES,CATALOG,BY_ID,DEFAULT,configure,rawTiles,owned,has,wildcard,number,garnet,full,modifyHan,bonus,bonusBreakdown,blackChips};
+module.exports={SOURCES,CATALOG,BY_ID,DEFAULT,NEKKYOU_SELECTION,EVENT_YAKU,effectiveRule,gemsFor,configure,rawTiles,owned,has,wildcard,number,garnet,full,modifyHan,bonus,bonusBreakdown,blackChips};

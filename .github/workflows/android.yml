@@ -1,0 +1,62 @@
+name: Android offline APK
+on:
+  push:
+    branches: [main, 'codex/**']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test
+        run: npm test
+      - name: Bundle offline engine
+        run: node scripts/bundle.js
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-36 build-tools;35.0.0 build-tools;36.0.0'
+          log-accepted-android-sdk-licenses: false
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - name: Build debug APK and unsigned Play bundle
+        run: gradle -p android assembleDebug bundleRelease --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mahjong-jewel-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: houseki-play-aab-unsigned
+          path: android/app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+  browser-smoke:
+    timeout-minutes: 8
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --package-lock=false --no-audit --no-fund --fetch-retries=1 --fetch-timeout=60000 playwright@1.56.1
+      - run: npx playwright install --with-deps chromium
+      - run: node scripts/bundle.js
+      - run: node scripts/smoke-ui.js
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mobile-ui-preview
+          path: |
+            mahjong-jewel-ui.png
+            mahjong-jewel-settings.png
+            mahjong-jewel-desktop.png

@@ -1,6 +1,7 @@
 'use strict';
 const M = require('../vendor/majiang-core/lib');
 const J=require('./jewels');
+const Replay=require('./replay')({M,J});
 const Physical=require('./physical')(M);
 const PAYOUT = [50,25,-25,-50];
 const UNLOCK_YAKU = ['平和','断幺九','一盃口','三色同順','一気通貫','混全帯幺九','七対子','対々和','三暗刻','三色同刻','混老頭','小三元','混一色','純全帯幺九','二盃口','清一色'];
@@ -55,7 +56,7 @@ class Player extends M.Player {
   const callback=this._callback;
   // The base Player marks an offered winning discard as passed after this handler
   // returns. Capture legal reactions before an asynchronous riichi popup yields.
-  const opts=actions(this,this.message);
+  const opts=actions(this,this.message);this._decisionOptions=opts;
   const proceed=()=>{if(!opts.length)return callback({});this.decide(opts,reply=>callback(reply||{}),this.message,this);};
   if(this.message.hule&&this.confirmWin){let replied=false;return this.confirmWin(this.message.hule,()=>{if(replied)return;replied=true;proceed();},this);}
   if(this.message.dapai?.p.endsWith('*')&&this.confirmRiichi){let replied=false;return this.confirmRiichi(this.message.dapai,()=>{if(replied)return;replied=true;proceed();},this);}
@@ -82,8 +83,10 @@ function openTargets(model,rules,self,tile,canRon=()=>true){
 class Game extends M.Game {
  constructor(players,done,extra={}) {
   super(players,done,rule({unlockedYaku:UNLOCK_YAKU[Math.floor(Math.random()*UNLOCK_YAKU.length)],...extra}),'宝石麻雀 — Offline');
-  this._openRiichi=[false,false,false,false];this.chips=[0,0,0,0];this.busted=new Set();this.bonusLog=[];
+  this.replayRecord=Replay.create();this.replayRules=Replay.rules4(this._rule);this._openRiichi=[false,false,false,false];this.chips=[0,0,0,0];this.busted=new Set();this.bonusLog=[];
  }
+ reply(id,reply){const p=this._players[id];if(!this._reply[id]&&p?.model?.shoupai?.[p._menfeng]&&p.message){const legal=p._decisionOptions||actions(p,p.message);if(legal.length)Replay.decision(this.replayRecord,id,p.controller||'unknown',reply,legal,{...Replay.fourView(p),chips:this.chips.slice()});}return super.reply(id,reply);}
+ exportReplay(id='four-'+this.replayRecord.startedAt){if(!this._paipu.rank?.length)throw Error('牌譜は対局終了後に出力できます');return Replay.finish('four',id,this._model.player.map((name,id)=>({id,name,controller:this._players[id].controller||'unknown'})),this.replayRules,this.replayRecord,settle(this._paipu),this._paipu);}
  qipai(shan){this._dealerPass=false;this._dealerChoiceOffered=false;this._openTrap=false;this._trapTargets=[];return super.qipai(shan);}
  dapai(tile){
   const m=this.model,view={...m,openRiichi:this._openRiichi},legal=this.get_dapai(),targets=t=>openTargets(view,this._rule,m.lunban,t,l=>this._neng_rong[l]);
@@ -123,6 +126,7 @@ if(!['hule','jieju'].includes(type)&&this._openRiichi?.some(Boolean)){const expo
    }
    h.jewelChips=n;h.jewelTotal=n*(loser===null?3:1);h.chipWinner=winner;h.chipLoser=loser;h.chipBalances=this.chips.slice();h.chipDelta=this.chips.map((v,id)=>v-before[id]);h.tobi=victims;this.bonusLog.push({winner,loser,n,victims});
   }
+  Replay.event(this.replayRecord,Object.keys(msg)[0],msg);
   super.add_paipu(msg);
  }
  last() { if(this._dealerPass&&this._lianzhuang){this._lianzhuang=false;this.model.changbang=0;}if(this.model.defen.some(n=>n>=55000)) {this.cold=true;return this.delay(()=>this.jieju(),0);}return super.last(); }
@@ -138,4 +142,5 @@ function saveResult(storage,id,results) {
  record.games.push({id,at:new Date().toISOString(),results});storage.setItem(key,JSON.stringify(record));return record;
 }
 module.exports={M,J,Physical,UNLOCK_YAKU,indicatorNumber,garnetValue,rule,actions,cpu,openTargets,Player,Game,bonus,transfer,settle,saveResult};
+module.exports.Replay=require('./replay')(module.exports);
 module.exports.Sanma=require('./sanma')(module.exports);

@@ -16,9 +16,10 @@ function createServer(options={}){
    }
    const manager=url.pathname.startsWith('/api/tables')?tables:rooms;
    if(['/api/rooms','/api/tables'].includes(url.pathname)&&req.method==='POST'){const b=await body(req);return json(res,200,manager.create(b.name,b.game));}
-   const match=url.pathname.match(/^\/api\/(?:rooms|tables)\/([A-F0-9]{8})\/(join|events|command)$/);if(!match)return json(res,404,{error:'Not found'});const [,code,action]=match;
-   if(action==='join'&&req.method==='POST'){const b=await body(req);return json(res,200,manager.join(code,b.name,b.game));}
+   const match=url.pathname.match(/^\/api\/(?:rooms|tables)\/([A-F0-9]{8})\/(join|events|command|invite)$/);if(!match)return json(res,404,{error:'Not found'});const [,code,action]=match;
+   if(action==='join'&&req.method==='POST'){const b=await body(req);return json(res,200,manager.join(code,b.name,b.game,b.invite));}
    const {r,m}=manager.auth(code,(req.headers.authorization||'').replace(/^Bearer /,''));
+   if(action==='invite'&&req.method==='POST')return json(res,200,manager.invitation(r,m,await body(req)));
    if(action==='command'&&req.method==='POST'){manager.command(r,m,await body(req));return json(res,200,{ok:true});}
    if(action==='events'&&req.method==='GET'){
     const after=Number(url.searchParams.get('after')||0);let data=manager.events(r,m,after);if(data.events.length)return json(res,200,data);

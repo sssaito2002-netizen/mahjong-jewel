@@ -18,7 +18,7 @@ class TableRooms{
   else{if(r.phase!=='playing'||c.revision!==r.revision)throw Error('手番が更新されました');const g=r.game;if(r.kind==='sanma'){
     if(c.type==='next'&&g.phase==='roundEnd'){r.acks.add(m.id);if(r.members.every(x=>r.acks.has(x.id))){g.act({next:true});r.acks.clear();}}
     else if(c.type==='reply'&&g.actor===m.id&&!['roundEnd','finished'].includes(g.phase)){g.act(c.reply||{});}else throw Error('現在は操作できません');
-   }else{if(c.type==='roll'&&g.state.active===m.id&&['roll','last'].includes(g.state.phase)){const values=Array.from({length:g.nextCount},draw);r.lastRoll={id:crypto.randomUUID(),player:m.id,values,held:g.state.partial.slice(),phase:g.state.phase,gesture:{dx:Math.max(-1,Math.min(1,Number(c.gesture?.dx)||0)),strength:Math.max(0,Math.min(1,Number(c.gesture?.strength)||.5))}};g.roll(values);}
+   }else{if(c.type==='bet'&&g.state.active===m.id){g.setBet(c.amount,m.id);}else if(c.type==='roll'&&g.state.active===m.id&&['roll','last'].includes(g.state.phase)){if(c.bet!==undefined)g.setBet(c.bet,m.id);const values=Array.from({length:g.nextCount},draw);r.lastRoll={id:crypto.randomUUID(),player:m.id,values,held:g.state.partial.slice(),phase:g.state.phase,gesture:{dx:Math.max(-1,Math.min(1,Number(c.gesture?.dx)||0)),strength:Math.max(0,Math.min(1,Number(c.gesture?.strength)||.5))}};g.roll(values);}
     else if(c.type==='next'&&(g.state.phase==='roundEnd'?host:g.state.phase==='result'&&g.state.active===m.id))g.next();else throw Error('現在は操作できません');}
   }
   if(r.game&&(r.kind==='sanma'?r.game.phase==='finished':r.game.state.phase==='finished'))r.phase='finished';m.seen.add(c.id);if(m.seen.size>128)m.seen.delete(m.seen.values().next().value);this.touch(r);this.schedule(r);

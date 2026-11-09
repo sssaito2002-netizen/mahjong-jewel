@@ -25,6 +25,7 @@ const FIELDS={
  tableTobi:{label:'トビ賞3枚（トバした和了者へ）',value:false},
  tobiDouble:{label:'トビが発生した局の和了祝儀を2倍（ダブロンは両者）',value:false},
  shuba:{label:'シュバリーチ：各家1ゲーム1回（5,000点／オープン複合6,000点）',value:false},
+ lowPointRiichi:{label:'持ち点不足でリーチ可（通常0点／オープン1,000点／シュバ4,000点／オープンシュバ6,000点から）',value:true},
  openCost:{label:'オープンリーチ供託',values:[1000,2000],labels:['1,000点','2,000点'],value:1000},
  tableRiichi:{label:'フリテン通常リーチ可・オープンは2軒目まで',value:false},
  riichiPass:{label:'リーチ後のロン見逃しを許可（ポッチツモは強制）',value:false},

@@ -23,8 +23,8 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),{cre
   const current=rooms.room(code);assert.equal(current.members.length,2);assert.equal(current.game._players.length,4);
   await a.waitForFunction(()=>onlineCursor>0);assert.deepEqual(errors,[]);
   const firstMatch=current.matchId;current.game.stop();for(const member of current.members){if(member.pending){clearTimeout(member.pending.timer);rooms.emit(member,'resolved',{id:member.pending.id});member.pending=null;}}
-  current.game._callback({defen:[40000,25000,20000,15000],rank:[1,2,3,4],bonusChips:[60,-20,-20,-20]});
-  await Promise.all(pages.map(p=>p.waitForSelector('#match-complete[open]')));assert.equal(await a.locator('.complete-ledger tbody tr').count(),4);await a.screenshot({path:'houseki-online-complete.png',fullPage:true});
+  Object.assign(current.game._paipu,{defen:[40000,25000,20000,15000],rank:[1,2,3,4],bonusChips:[60,-20,-20,-20]});current.game._callback(current.game._paipu);
+  await Promise.all(pages.map(p=>p.waitForSelector('#match-complete[open]')));assert.equal(await a.locator('.complete-ledger').first().locator('tbody tr').count(),4);await a.screenshot({path:'houseki-online-complete.png',fullPage:true});
   await a.locator('.complete-buttons button').first().click();await a.waitForSelector('#online-lobby:not([hidden])');assert.equal(current.members[1].ready,false);
   await b.locator('.complete-buttons button').first().click();await a.waitForSelector('#start-room:enabled');await a.locator('#start-room').click();
   await a.waitForSelector('#game-area:not([hidden])');assert.notEqual(current.matchId,firstMatch);assert.equal(current.phase,'playing');assert.deepEqual(errors,[]);

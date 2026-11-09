@@ -35,7 +35,7 @@ const FIELDS={
  doubleYakuman:{label:'異なる本役満の複合を最大ダブルにする',value:false},
  pao:{label:'大三元・大四喜のパオを採用',value:true},
  kokushiRobClosed:{label:'国士無双の暗槓ロンを許可',value:false},
- unlimitedKan:{label:'槓回数の上限なし／残1枚時の槓は嶺上なしで流局',value:false},
+ unlimitedKan:{label:'槓回数の上限なし（残り1枚以下は槓不可）',value:false},
  closedKanHan:{label:'暗槓1組につき和了時1翻加算',value:false},
  nagashi:{label:'流し役満を採用（ポン・カン・リーチ・鳴かれで不成立）',value:false},
  localTriplets:{label:'三風2翻・三連刻2翻・四連刻役満',value:false},

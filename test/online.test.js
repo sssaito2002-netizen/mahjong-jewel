@@ -33,3 +33,6 @@ test('next match keeps the room, resets readiness once and rejects stale or mid-
   rooms.command(r,m,{type:'start'});assert.equal(r.phase,'playing');assert.notEqual(r.matchId,'finished-match');assert.throws(()=>rooms.command(r,m,{type:'next',matchId:'finished-match'}));
  }finally{rooms.close();}
 });
+test('host abort choices are boolean, broadcast to guests, and enter the actual game rule',()=>{
+ const {rooms,r,m,other}=prepare();try{assert.equal(r.fourRiichiAbort,false);assert.equal(r.fourWindsAbort,true);assert.throws(()=>rooms.command(r,other,{type:'configure',selection:E.J.DEFAULT,fourRiichiAbort:true}));assert.throws(()=>rooms.command(r,m,{type:'configure',selection:E.J.DEFAULT,fourWindsAbort:'false'}));rooms.command(r,m,{type:'configure',selection:E.J.DEFAULT,fourRiichiAbort:true,fourWindsAbort:false});const lobby=other.events.filter(e=>e.type==='lobby').at(-1).data;assert.equal(lobby.fourRiichiAbort,true);assert.equal(lobby.fourWindsAbort,false);rooms.command(r,m,{type:'ready',ready:true});rooms.command(r,other,{type:'ready',ready:true});rooms.command(r,m,{type:'start'});assert.equal(r.game._rule['四家立直流局あり'],true);assert.equal(r.game._rule['四風連打流局あり'],false);}finally{rooms.close();}
+});

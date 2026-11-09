@@ -32,7 +32,22 @@ function dazi(bingpai) {
              b: [ 0, n_dazi, n_guli ] };
 }
 
+// Cached suit decomposition is purely a function of logical tile counts.
+// Return fresh arrays: the recursive caller mutates its candidate results.
+const suitMemo = new Map();
 function mianzi(bingpai, n = 1) {
+    if (n !== 1) return calculate_mianzi(bingpai, n);
+    let key = 0;
+    for (let i=1; i<=9; i++) key = key*5 + (bingpai[i] || 0);
+    let value = suitMemo.get(key);
+    if (!value) {
+        value = calculate_mianzi(bingpai, n);
+        if (suitMemo.size >= 60000) suitMemo.clear();
+        suitMemo.set(key, {a:value.a.slice(), b:value.b.slice()});
+    }
+    return {a:value.a.slice(), b:value.b.slice()};
+}
+function calculate_mianzi(bingpai, n = 1) {
 
     if (n > 9) return dazi(bingpai);
 

@@ -313,7 +313,7 @@ module.exports = class Game {
         else                                this._fengpai = false;
 
         if (dapai.slice(-1) == '*') {
-            const open=this._rule.openRiichi&&this._reply?.[model.player_id[model.lunban]]?.open&&model.shoupai[model.lunban].menqian&&model.defen[model.player_id[model.lunban]]>=(this._rule.openRiichiCost||2000);
+            const open=this._rule.openRiichi&&this._reply?.[model.player_id[model.lunban]]?.open&&(model.shoupai[model.lunban].menqian||Jewel.has(this._rule,model.shoupai[model.lunban],'turquoise'))&&model.defen[model.player_id[model.lunban]]>=(this._rule.openRiichiCost||2000);
             this._openRiichi[model.lunban]=!!open;
             this._lizhi[model.lunban] = open?(this._diyizimo?4:3):this._diyizimo?2:1;
             this._yifa[model.lunban]  = this._rule['一発あり'];
@@ -795,7 +795,7 @@ module.exports = class Game {
             model.lizhibang+=cost/1000;
 
             if (this._lizhi.filter(x=>x).length == 4
-                && this._rule['途中流局あり'])
+                && this._rule['途中流局あり'] && this._rule['四家立直流局あり'] !== false)
             {
                 let shoupai = model.shoupai.map(s=>s.toString());
                 return this.delay(()=>this.pingju('四家立直', shoupai));
@@ -804,7 +804,7 @@ module.exports = class Game {
 
         if (this._diyizimo && model.lunban == 3) {
             this._diyizimo = false;
-            if (this._fengpai) {
+            if (this._fengpai && this._rule['四風連打流局あり'] !== false) {
                 return this.delay(()=>this.pingju('四風連打'), 0);
             }
         }
@@ -1068,7 +1068,7 @@ module.exports = class Game {
                 if (n_tingpai1 > n_tingpai2) return [];
             }
         }
-        return paishu == 0 || n_gang == 4 ? [] : mianzi;
+        return paishu <= 1 || n_gang >= 4 ? [] : mianzi;
     }
 
     static allow_lizhi(rule, shoupai, p, paishu, defen) {

@@ -1,4 +1,6 @@
 'use strict';
+const CpuProfiles=require('./cpu-profiles');
+const ReactionGate=require('./reaction-gate');
 const M = require('../vendor/majiang-core/lib');
 const J=require('./jewels');
 const Replay=require('./replay')({M,J});
@@ -6,11 +8,13 @@ const Physical=require('./physical')(M);
 const PAYOUT = [50,25,-25,-50];
 const UNLOCK_YAKU = ['平和','断幺九','一盃口','三色同順','一気通貫','混全帯幺九','七対子','対々和','三暗刻','三色同刻','混老頭','小三元','混一色','純全帯幺九','二盃口','清一色'];
 function rule(extra={}) {
+ for(const key of ['四家立直流局あり','四風連打流局あり'])if(extra[key]!==undefined&&typeof extra[key]!=='boolean')throw Error('途中流局設定が不正です');
+ if(extra.cpuLevel!==undefined)CpuProfiles.validate(extra.cpuLevel);
  const modes=extra.pocchiModes||[extra.pocchiMode||'amethyst-white'];
  const legacy={white:'topaz','amethyst-white':'amethyst-white',gold:'gold-pocchi',gane:'gane-pocchi'};
  const ids=extra.gemSelection||(extra.nekkyou?J.NEKKYOU_SELECTION:null)||['lapis','amethyst-p','tourmaline',...modes.map(x=>legacy[x]||x)];
  const gemTiles=J.configure(ids);
- return M.rule({openRiichi:true,openRiichiCost:2000,'カンドラ後乗せ':false,'場数':1,'延長戦方式':0,'本場点':1500,'切り上げ満貫あり':true,'場風牌':[1,3],'赤牌':{m:0,p:0,s:0},jewelBonus:true,fullJewel:true,...extra,unlockedYaku:extra.nekkyou?'全祝儀手役':extra.unlockedYaku,
+ return M.rule({openRiichi:true,openRiichiCost:2000,'カンドラ後乗せ':false,'四家立直流局あり':false,'四風連打流局あり':true,'場数':1,'延長戦方式':0,'本場点':1500,'切り上げ満貫あり':true,'場風牌':[1,3],'赤牌':{m:0,p:0,s:0},jewelBonus:true,fullJewel:true,...extra,unlockedYaku:extra.nekkyou?'全祝儀手役':extra.unlockedYaku,
   gemSelection:ids.slice(),gemTiles,pocchiModes:modes.slice(),whitePocchi:ids.some(x=>['topaz','amethyst-white'].includes(x)),pocchiAmethyst:ids.includes('amethyst-white'),goldPocchi:ids.includes('gold-pocchi'),ganePocchi:ids.includes('gane-pocchi')});
 }
 function actions(p,msg) {
@@ -21,13 +25,17 @@ function actions(p,msg) {
  const z=msg.zimo||msg.gangzimo;
  const add=(label,reply)=>{if(reply.hule&&(J.has(p._rule,hand,'carnelian')||p._rule.gemTiles?.[msg.dapai?.p.slice(0,2)]?.effect==='carnelian')){out.push({label:label+'（祝儀優先）',reply:{...reply,jewelChoice:'chips'}});out.push({label:label+'（翻数優先）',reply:{...reply,jewelChoice:'han'}});}else out.push({label,reply});};
  if(z && z.l===self || msg.fulou && msg.fulou.l===self && !msg.fulou.m.match(/\d{4}/)) {
-  if(z && p.allow_hule(hand,null,!!msg.gangzimo)) add('ツモ',{hule:'-'});
+  if(z && p.allow_hule(hand,null,!!msg.gangzimo)) {
+   add('ツモ',{hule:'-'});
+   // A legal riichi wildcard draw must never fall through to tsumogiri.
+   if(hand.lizhi&&J.wildcard(p._rule,hand))return out;
+  }
   if(z) for(const m of p.get_gang_mianzi(hand)||[]) add('カン '+m,{gang:m});
   if(z && !hand.lizhi && p.allow_pingju(hand)) add('九種九牌',{pingju:true});
   for(const tile of p.get_dapai(hand)||[]) {
    if(hand.lizhi && tile!==hand._zimo+'_')continue;
    add('打牌 '+tile,{dapai:tile});
-   if(z && p.allow_lizhi(hand,tile)){add('リーチ '+tile,{dapai:tile+'*'});if(p._rule.openRiichi&&hand.menqian&&(p.model.defen?.[p.model.player_id[self]]??0)>=(p._rule.openRiichiCost||2000))add('オープンリーチ '+tile,{dapai:tile+'*',open:true});}
+   if(z && p.allow_lizhi(hand,tile)){add('リーチ '+tile,{dapai:tile+'*'});if(p._rule.openRiichi&&(hand.menqian||J.has(p._rule,hand.clone().dapai(tile),'turquoise'))&&(p.model.defen?.[p.model.player_id[self]]??0)>=(p._rule.openRiichiCost||2000))add('オープンリーチ '+tile,{dapai:tile+'*',open:true});}
   }
  } else if(msg.dapai && msg.dapai.l!==self) {
   const d=msg.dapai, tile=d.p.slice(0,2)+'_+=-'[(4+d.l-self)%4];
@@ -50,6 +58,7 @@ class Player extends M.Player {
   super.action(msg,callback);
   if(!callback){this.applyOpenHands();this.onUpdate(msg,this);}
  }
+ allow_lizhi(hand,tile){if(this._rule.nekkyou)this._rule.jewelIndicators=this.model.shan?.baopai||[];return super.allow_lizhi(hand,tile);}
  applyOpenHands(){if(this.message.qipai)this.model.openRiichi=[false,false,false,false];for(const [l,text]of Object.entries(this.message.openHands||{})){this.model.shoupai[l]=M.Shoupai.fromString(text);this.model.openRiichi??=[false,false,false,false];this.model.openRiichi[l]=true;}}
  respond() {
   this.applyOpenHands();this.onUpdate(this.message,this);
@@ -57,7 +66,8 @@ class Player extends M.Player {
   // The base Player marks an offered winning discard as passed after this handler
   // returns. Capture legal reactions before an asynchronous riichi popup yields.
   const opts=actions(this,this.message);this._decisionOptions=opts;
-  const proceed=()=>{if(!opts.length)return callback({});this.decide(opts,reply=>callback(reply||{}),this.message,this);};
+  const present=(options,done)=>{this._decisionOptions=options;if(!options.length)return done({});this.decide(options,reply=>done(reply||{}),this.message,this);};
+  const proceed=()=>{if(this._reactionGate)return this._reactionGate.collect(opts,present,callback);present(opts,callback);};
   if(this.message.hule&&this.confirmWin){let replied=false;return this.confirmWin(this.message.hule,()=>{if(replied)return;replied=true;proceed();},this);}
   if(this.message.dapai?.p.endsWith('*')&&this.confirmRiichi){let replied=false;return this.confirmRiichi(this.message.dapai,()=>{if(replied)return;replied=true;proceed();},this);}
   proceed();
@@ -94,12 +104,16 @@ class Game extends M.Game {
   this._trapTargets=this._openTrap?targets(tile):[];
   return super.dapai(tile);
  }
+ reply_zimo(){const m=this.model,h=m.shoupai[m.lunban];if(h.lizhi&&J.wildcard(this._rule,h)&&this.allow_hule()&&!this.get_reply(m.lunban).hule)this._reply[m.player_id[m.lunban]]={hule:'-'};return super.reply_zimo();}
  reply_dapai(){if(this._openTrap)for(const l of this._trapTargets)if(this.allow_hule(l))this._reply[this.model.player_id[l]]={hule:'-'};return super.reply_dapai();}
+ allow_lizhi(tile){if(this._rule.nekkyou)this._rule.jewelIndicators=this.model.shan?.baopai||[];return super.allow_lizhi(tile);}
  captureDealerChoice(){if(this._dealerChoiceOffered&&this.get_reply(0).dealerPass===true)this._dealerPass=true;this._dealerChoiceOffered=false;}
  reply_hule(){this.captureDealerChoice();return super.reply_hule();}
  reply_pingju(){this.captureDealerChoice();return super.reply_pingju();}
  call_players(type,msg,timeout){
   if(this._rule.nekkyou)this._rule.jewelIndicators=this.model.shan?.baopai||[];
+  const gate=['dapai','gang'].includes(type)&&this._players.length===4&&this._players.every(p=>p instanceof Player)?new ReactionGate():null;
+  for(const player of this._players)player._reactionGate=gate;
   this._dealerChoiceOffered=false;
   const eligible=this._lianzhuang&&(type==='hule'&&this._hule.length===0||type==='pingju'&&msg[0].pingju.name==='荒牌平局'&&!!msg[0].pingju.shoupai[0]);
   if(eligible){const m=this.model,points=m.defen.slice();m.player_id.forEach((id,l)=>points[id]+=this._fenpei[l]);if(points.every(n=>n>=0&&n<55000)){this._dealerChoiceOffered=true;msg[0].dealerChoice={points,self:m.player_id[0],round:m.zhuangfeng*4+m.jushu};}}
@@ -141,6 +155,6 @@ function saveResult(storage,id,results) {
  for(const r of results){const t=record.totals[r.id]||{rankChips:0,bonusChips:0,games:0};record.totals[r.id]={rankChips:t.rankChips+r.rankChips,bonusChips:t.bonusChips+r.bonusChips,games:t.games+1};}
  record.games.push({id,at:new Date().toISOString(),results});storage.setItem(key,JSON.stringify(record));return record;
 }
-module.exports={M,J,Physical,UNLOCK_YAKU,indicatorNumber,garnetValue,rule,actions,cpu,openTargets,Player,Game,bonus,transfer,settle,saveResult};
+module.exports={M,J,CpuProfiles,Physical,UNLOCK_YAKU,indicatorNumber,garnetValue,rule,actions,cpu,openTargets,Player,Game,bonus,transfer,settle,saveResult};
 module.exports.Replay=require('./replay')(module.exports);
 module.exports.Sanma=require('./sanma')(module.exports);

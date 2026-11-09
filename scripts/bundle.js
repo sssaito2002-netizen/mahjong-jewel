@@ -8,8 +8,9 @@ function visit(file){let id=path.relative(root,file).replaceAll('\\','/');if(mod
  modules[id]=src;return id;}
 const entry=visit(path.join(root,'offline/engine.js'));
 const roomsEntry=visit(path.join(root,'online/rooms.js'));
+const tablesEntry=visit(path.join(root,'online/table-rooms.js'));
 fs.mkdirSync(path.join(root,'public/offline'),{recursive:true});
-fs.writeFileSync(path.join(root,'public/offline/engine.bundle.js'),`/* Includes majiang-core, MIT. See THIRD_PARTY_NOTICES.md */\n(function(){const modules={${Object.entries(modules).map(([id,src])=>JSON.stringify(id)+':function(module,exports,require){\n'+src+'\n}').join(',\n')}};const cache={};function require(id){if(cache[id])return cache[id].exports;const m=cache[id]={exports:{}};modules[id](m,m.exports,require);return m.exports;}globalThis.JewelOffline=require(${JSON.stringify(entry)});globalThis.JewelRooms=require(${JSON.stringify(roomsEntry)});})();\n`);
+fs.writeFileSync(path.join(root,'public/offline/engine.bundle.js'),`/* Includes majiang-core, MIT. See THIRD_PARTY_NOTICES.md */\n(function(){const modules={${Object.entries(modules).map(([id,src])=>JSON.stringify(id)+':function(module,exports,require){\n'+src+'\n}').join(',\n')}};const cache={};function require(id){if(cache[id])return cache[id].exports;const m=cache[id]={exports:{}};modules[id](m,m.exports,require);return m.exports;}globalThis.JewelOffline=require(${JSON.stringify(entry)});globalThis.JewelRooms=require(${JSON.stringify(roomsEntry)});globalThis.JewelTables=require(${JSON.stringify(tablesEntry)});})();\n`);
 
 fs.copyFileSync(path.join(root,'public/offline/online.js'),path.join(root,'public/offline/nearby-client.js'));
 require('./build-sanma-rules');

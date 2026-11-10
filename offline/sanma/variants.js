@@ -11,7 +11,7 @@ const FIELDS={
  notenPool:{label:'ノーテン罰符（場）',values:[2000,4000],labels:['2,000点','4,000点'],value:2000},
  northExtended:{label:'手牌の北を字一色・萬子混一色でも使用可／北は打牌不可',value:false},
  nukiRon:{label:'北抜きへの役満ロン（自分が北を抜いていると不可）',value:false},
- flowerUra:{label:'裏表示の華も和了者に効果（ダマ・副露でも有効）',value:false},
+ flowerUra:{label:'裏表示の華もリーチ和了者に効果',value:false},
  tableTulip:{label:'春チューリップ：萬子2・華3、1段のみ、保証なし',value:false},
  autumnColoredOnly:{label:'秋の倍増は赤金自体の翻数・祝儀だけ',value:false},
  ippatsuChips:{label:'通常の一発祝儀',values:[0,1],labels:['なし','1枚'],value:1},

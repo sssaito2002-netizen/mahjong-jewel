@@ -22,6 +22,8 @@ module.exports=function(E){
   return {tier,base,label:['1翻','2翻','3翻','満貫','跳満','倍満','三倍満',yakuman?'役満':'数え役満','5倍満'][tier],ron:round(base*(dealer?6:4))+honba*v.honbaRon,child:round(base*(dealer?3:1.5))+honba*1000,dealer:round(base*(dealer?3:2.5))+honba*1000};
  }
  function score({hand,ron=null,seat=1,rule:gameRule=rule(),indicators=[],ura=[],north=0,flowers=[],flowerRules=DEFAULT_FLOWERS,ippatsu=false,rinshan=false,last=false,honba=0,qianggang=false,openRiichi=false,tianhu=0,house={},roundWind=0,discardedDora=false,openPush=false}){
+  // Hidden indicators affect a hand only after a closed riichi win.
+  ura=hand.lizhi&&hand.menqian?ura:[];
   const v=H.validate(house);if(!arguments[0].rule)gameRule={...rule(v),'場風牌':[roundWind+1]};
   // Evaluate wildcard candidates with sanma's own seven-pairs and flower scoring too.
   if(!ron&&hand.lizhi&&Object.values(POCCHI).includes(hand._zimo)){

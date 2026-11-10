@@ -68,6 +68,7 @@ class Player extends M.Player {
   const opts=actions(this,this.message);this._decisionOptions=opts;
   const present=(options,done)=>{this._decisionOptions=options;if(!options.length)return done({});this.decide(options,reply=>done(reply||{}),this.message,this);};
   const proceed=()=>{if(this._reactionGate)return this._reactionGate.collect(opts,present,callback);present(opts,callback);};
+  if(this.message.pingju&&this.confirmDraw){let replied=false;return this.confirmDraw(this.message.pingju,()=>{if(replied)return;replied=true;proceed();},this);}
   if(this.message.hule&&this.confirmWin){let replied=false;return this.confirmWin(this.message.hule,()=>{if(replied)return;replied=true;proceed();},this);}
   if(this.message.dapai?.p.endsWith('*')&&this.confirmRiichi){let replied=false;return this.confirmRiichi(this.message.dapai,()=>{if(replied)return;replied=true;proceed();},this);}
   proceed();
@@ -119,6 +120,7 @@ class Game extends M.Game {
   if(eligible){const m=this.model,points=m.defen.slice();m.player_id.forEach((id,l)=>points[id]+=this._fenpei[l]);if(points.every(n=>n>=0&&n<55000)){this._dealerChoiceOffered=true;msg[0].dealerChoice={points,self:m.player_id[0],round:m.zhuangfeng*4+m.jushu};}}
 if(!['hule','jieju'].includes(type)&&this._openRiichi?.some(Boolean)){const exposed={};for(let l=0;l<4;l++)if(this._openRiichi[l])exposed[l]=this.model.shoupai[l].toString();for(const m of msg)m.openHands=exposed;}return super.call_players(type,msg,timeout);}
  add_paipu(msg) {
+  if(msg.pingju)msg.pingju.finalHands=this.model.shoupai.map(h=>h.toString());
   if(msg.qipai)msg.qipai.chipBalances=this.chips.slice();
   if(msg.hule){
    const before=this.chips.slice();

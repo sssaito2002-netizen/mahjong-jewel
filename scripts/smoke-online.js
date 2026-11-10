@@ -13,11 +13,12 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),{cre
   await a.waitForFunction(()=>onlineLobby.members.length===2);await a.locator('#open-table-menu').click();await a.locator('#settings').click();await a.locator('input[value=pearl]').check();await a.locator('#apply-start').click();await a.locator('#close-table-menu').click();await b.waitForFunction(()=>onlineLobby.selection.includes('pearl'));
   await a.locator('#ready-room').click();await b.locator('#ready-room').click();await a.waitForSelector('#start-room:enabled');await a.locator('#start-room').click();
   await Promise.all(pages.map(p=>p.waitForSelector('#game-area:not([hidden])')));
-  for(let i=0;i<45;i++){
-   let acted=false;for(const p of pages){const result=await p.evaluate(()=>{if(finished)return 'done';if($('win-confirm').open){$('win-next').click();return true;}if($('riichi-confirm').open){$('riichi-next').click();return true;}if(pending){consume(E.cpu(human,pending.options));return true;}return false;});acted=acted||result===true;}
+  let observedRiver=false;for(let i=0;i<100;i++){
+   let acted=false;for(const p of pages){const result=await p.evaluate(()=>{if(finished)return 'done';if($('draw-confirm')?.open){$('draw-next').click();return true;}if($('win-confirm').open){$('win-next').click();return true;}if($('riichi-confirm').open){$('riichi-next').click();return true;}if(pending){consume(E.cpu(human,pending.options));return true;}return false;});acted=acted||result===true;}
    await new Promise(r=>setTimeout(r,acted?40:100));
+   if(await a.locator('.river .tile').count()>0){observedRiver=true;if(i>=20)break;}
   }
-  assert.ok(await a.locator('.river .tile').count()>0);assert.equal(await a.locator('.seat').count(),4);assert.equal(await b.locator('.seat').count(),4);
+  assert.ok(observedRiver,JSON.stringify({phase:rooms.room(code).phase,status:rooms.room(code).game._status,pending:rooms.room(code).members.map(m=>m.pending?.type)}));assert.equal(await a.locator('.seat').count(),4);assert.equal(await b.locator('.seat').count(),4);
   await a.screenshot({path:'houseki-online-a.png',fullPage:true});await b.screenshot({path:'houseki-online-b.png',fullPage:true});
   const token=await a.evaluate(()=>onlineSession.token);await a.reload();await a.waitForFunction(()=>human?.model?.shan);assert.equal(await a.evaluate(()=>onlineSession.token),token);
   const current=rooms.room(code);assert.equal(current.members.length,2);assert.equal(current.game._players.length,4);

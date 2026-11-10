@@ -32,6 +32,7 @@ class Rooms {
  start(r){r.phase='playing';r.matchId=crypto.randomUUID();this.lobby(r);const players=[];
   for(let id=0;id<4;id++){const m=r.members[id];let player;
    if(m){player=new E.Player((options,reply,msg,p)=>{const discard=options.some(o=>o.reply.dapai);this.request(r,m,'action',{options},reply,discard?this.turnMs:this.callMs,()=>{const win=options.find(o=>o.reply.hule);if(win)return win.reply;if(discard){const draw=options.find(o=>o.reply.dapai===p.shoupai._zimo+'_')||options.find(o=>o.reply.dapai?.slice(0,2)===p.shoupai._zimo&&!o.reply.dapai.endsWith('*'));if(draw)return draw.reply;}return options.find(o=>Object.keys(o.reply).length===0)?.reply||E.cpu(p,options);});},msg=>this.emit(m,'game',msg));
+    player.confirmDraw=(d,done)=>this.request(r,m,'draw',d,done,this.confirmMs,()=>({}));
     player.confirmWin=(h,done)=>this.request(r,m,'win',h,done,this.confirmMs,()=>({}));
     player.confirmRiichi=(d,done)=>this.request(r,m,'riichi',d,done,this.confirmMs,()=>({}));
    }else player=new E.Player((options,reply,msg,p)=>reply(E.cpu(p,options)));

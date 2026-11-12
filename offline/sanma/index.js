@@ -57,9 +57,11 @@ module.exports=function(E){
   }
   win(winners,loser,forced=null){const wins=[],settlements=[],before=this.points.slice(),beforeChips=this.chips.slice(),tobiCauses=new Map(),v=this.options.house;for(let i=0;i<winners.length;i++){
    const id=winners[i],ron=loser===null?null:this.last.tile+signedDirection(loser,id),result=forced?.[id]||this.score(id,this.hands[id],ron,{honba:i===0?this.honba:0,rob:this.phase==='rob'});if(!result)throw Error('和了形が不正です');
+   const pointStart=this.points.slice(),honbaCount=i===0?this.honba:0,stickPoints=i===0?this.sticks*1000:0;
    const responsible=v.pao&&result.damanguan?result.yaku.map(y=>this.pao[id][y.name]).find(p=>p!==undefined):undefined;
    if(responsible!==undefined){result.pao=responsible;if(loser===null){const total=[0,1,2].filter(p=>p!==id).reduce((n,p)=>n+(p===this.dealer?result.pay.dealer:result.pay.child),0);this.points[responsible]-=total;this.points[id]+=total;}else{const honba=(i===0?this.honba:0)*1000,half=(result.pay.ron-honba)/2;this.points[responsible]-=half+honba;this.points[loser]-=half;this.points[id]+=result.pay.ron;}}
    else if(loser===null){for(let other=0;other<3;other++)if(other!==id){const n=other===this.dealer?result.pay.dealer:result.pay.child;this.points[other]-=n;this.points[id]+=n;}}else{this.points[loser]-=result.pay.ron;this.points[id]+=result.pay.ron;}
+   const winPoints=this.points[id]-pointStart[id],honbaPoints=honbaCount*(loser===null?2000:v.honbaRon);result.pointReceipt={isDealer:id===this.dealer,honbaCount,honbaPoints,stickPoints,handPoints:winPoints-honbaPoints,winPoints,received:winPoints+stickPoints,transfers:[0,1,2].filter(p=>p!==id&&this.points[p]<pointStart[p]).map(p=>({from:p,to:id,amount:pointStart[p]-this.points[p]}))};
    const newlyBusted=[0,1,2].filter(p=>p!==id&&this.isBust(this.points[p])&&!tobiCauses.has(p));for(const p of newlyBusted)tobiCauses.set(p,id);
    if(i===0){this.points[id]+=this.sticks*1000;this.sticks=0;}
    settlements.push({id,result,received:this.points[id]-before[id]});

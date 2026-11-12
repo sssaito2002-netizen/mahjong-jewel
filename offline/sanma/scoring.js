@@ -19,7 +19,8 @@ module.exports=function(E){
  function payments(han,yakuman,summer,dealer,tsumo,honba=0,house={}){const v=H.validate(house);let base,tier;
   if(yakuman){base=8000;tier=7;}else if(han>=14){base=8000;tier=7;}else if(han>=11){base=6000;tier=6;}else if(han>=8){base=4000;tier=5;}else if(han>=6){base=3000;tier=4;}else if(han>=4){base=2000;tier=3;}else {tier=Math.max(0,han-1);base=30*2**(han+2);}
   const tiers=[240,480,960,2000,3000,4000,6000,8000,10000];tier=Math.min(v.fiveMangan?8:7,tier+summer);if(summer)base=tiers[tier];if(yakuman&&Number(yakuman)>1)base*=Math.min(2,Number(yakuman));const round=n=>Math.ceil(n/1000)*1000;
-  return {tier,base,label:['1翻','2翻','3翻','満貫','跳満','倍満','三倍満',yakuman?'役満':'数え役満','5倍満'][tier],ron:round(base*(dealer?6:4))+honba*v.honbaRon,child:round(base*(dealer?3:1.5))+honba*1000,dealer:round(base*(dealer?3:2.5))+honba*1000};
+  const split=[[1000,1000],[1000,1000],[1000,3000],[3000,5000],[4000,8000],[6000,10000],[8000,16000],[12000,20000],[15000,25000]][tier],multiple=yakuman&&Number(yakuman)>1?Math.min(2,Number(yakuman)):1;
+  return {tier,base,label:['1翻','2翻','3翻','満貫','跳満','倍満','三倍満',yakuman?'役満':'数え役満','5倍満'][tier],ron:round(base*(dealer?6:4))+honba*v.honbaRon,child:(dealer?round(base*3):split[0]*multiple)+honba*1000,dealer:(dealer?round(base*3):split[1]*multiple)+honba*1000};
  }
  function score({hand,ron=null,seat=1,rule:gameRule=rule(),indicators=[],ura=[],north=0,flowers=[],flowerRules=DEFAULT_FLOWERS,ippatsu=false,rinshan=false,last=false,honba=0,qianggang=false,openRiichi=false,tianhu=0,house={},roundWind=0,discardedDora=false,openPush=false}){
   // Hidden indicators affect a hand only after a closed riichi win.

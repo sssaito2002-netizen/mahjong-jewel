@@ -1,0 +1,48 @@
+name: Verify live online service
+on:
+  push:
+    branches: [codex/offline-android]
+    paths: [.github/workflows/verify-online-live.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check public game and readiness endpoint
+        run: |
+          node <<'JS'
+          const assert=require('node:assert/strict');
+          (async()=>{
+            const base='https://houseki-mahjong-online.onrender.com';
+            let ready=false;
+            for(let i=0;i<6;i++){
+              try{
+                const r=await fetch(base+'/health',{signal:AbortSignal.timeout(20000)});
+                assert.equal(r.status,200);assert.equal((await r.json()).ok,true);
+                ready=true;break;
+              }catch(e){console.log('Readiness attempt '+(i+1)+': '+e.message);}
+            }
+            assert.equal(ready,true);
+            const page=await fetch(base+'/',{signal:AbortSignal.timeout(20000)});
+            assert.equal(page.status,200);const html=await page.text();
+            assert.ok(html.includes('宝石麻雀'));assert.ok(html.includes('online.js'));assert.ok(html.includes('completion.js'));
+            for(const asset of ['/engine.bundle.js','/online.js','/tiles/Pin5.svg']){
+              const r=await fetch(base+asset,{signal:AbortSignal.timeout(20000)});assert.equal(r.status,200);
+            }
+            const engine=await (await fetch(base+'/engine.bundle.js',{signal:AbortSignal.timeout(20000)})).text();
+            assert.ok(engine.includes('bestChips'));
+            const pool=engine.match(/const UNLOCK_YAKU = \[([^\]]+)\]/);
+            assert.ok(pool);assert.equal(/翻牌|役牌|場風|自風/.test(pool[1]),false);
+            const ui=await (await fetch(base+'/ui.js',{signal:AbortSignal.timeout(20000)})).text();assert.ok(ui.includes('initTableMenu'));
+            const css=await (await fetch(base+'/style.css',{signal:AbortSignal.timeout(20000)})).text();assert.ok(css.includes('@media(orientation:landscape)'));
+            const completion=await fetch(base+'/completion.js',{signal:AbortSignal.timeout(20000)});assert.equal(completion.status,200);
+            const home=await fetch(base+'/home.html',{signal:AbortSignal.timeout(20000)});assert.equal(home.status,200);
+            console.log('Live HTTPS health, chip tie-break fix, completion dialog, home and bundled assets: OK');
+          })().catch(e=>{console.error(e);process.exit(1);});
+          JS

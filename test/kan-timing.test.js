@@ -1,0 +1,9 @@
+'use strict';
+const {test}=require('node:test'),assert=require('node:assert/strict'),E=require('../offline/engine'),h=s=>E.M.Shoupai.fromString(s);
+test('all jewel kan types reveal their indicator before the rinshan draw and its log entry',()=>{
+ assert.equal(E.rule()['カンドラ後乗せ'],false);assert.equal(E.Sanma.rule()['カンドラ後乗せ'],false);
+ for(const meld of ['z5555','z555+5','z5555+']){const g=new E.Game([],()=>{},{gemSelection:[]});g._paipu={log:[[]]};g._gang=meld;g._n_gang=[1,0,0,0];const m=g.model;m.lunban=0;m.shoupai=[h('m123p12s789z11,'+meld),new E.M.Shoupai(),new E.M.Shoupai(),new E.M.Shoupai()];m.shan=new E.M.Shan(g._rule);m.shan._pai[0]='p3';m.shan._pai[5]='p2';m.shan._baopai=['s4'];const order=[];g.notify_players=(type)=>{order.push(type);assert.equal(m.shoupai[0]._zimo,null);assert.equal(m.shan.baopai.length,2);};g.call_players=(type)=>{order.push(type);assert.equal(m.shan.baopai.length,2);assert.equal(m.shoupai[0]._zimo,'p3');};g.gangzimo();assert.deepEqual(order,['kaigang','gangzimo'],meld);assert.deepEqual(g._paipu.log[0].map(e=>Object.keys(e)[0]),['kaigang','gangzimo']);const r=E.M.Util.hule(m.shoupai[0],null,E.M.Util.hule_param({rule:g._rule,menfeng:0,lingshang:true,baopai:m.shan.baopai}));assert.ok(r.hupai.some(y=>y.name==='ドラ'&&y.fanshu>=1),meld);}
+});
+test('sanma reveals the new kan indicator before taking the rinshan tile, including open kan',()=>{
+ for(const open of [false,true]){const g=new E.Sanma.Game();g.turn=0;g.phase='turn';g.hands[0]=open?h('p123s123789z1,z5555+'):h('p123s555789z1155').zimo('s5');g.dead=['m1','m1','m9','m9'];g.kans=0;g.wall=['p2','p4','p3','p9'];const draw=g.draw;let checked=false;g.draw=function(rinshan){assert.equal(rinshan,true);assert.equal(this.indicators.length,3);assert.equal(this.indicators[2],'p2');checked=true;return draw.call(this,rinshan);};g.commitKan(0,open?'z5555+':'s5555',open);assert.ok(checked);assert.equal(g.kans,1);}
+});

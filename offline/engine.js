@@ -4,6 +4,7 @@ const ReactionGate=require('./reaction-gate');
 const M = require('../vendor/majiang-core/lib');
 const J=require('./jewels');
 const CustomFour=require('./custom-four');
+const ResultRules=require('./result-rules');
 const Replay=require('./replay')({M,J});
 const Physical=require('./physical')(M);
 const PAYOUT = [50,25,-25,-50];
@@ -152,14 +153,14 @@ if(!['hule','jieju'].includes(type)&&this._openRiichi?.some(Boolean)){const expo
  jieju() {if(this.cold&&(this._rule.nekkyou||this._rule.customFour?.coldChips)&&!this._coldAwarded){this._coldAwarded=true;const winner=this.model.defen.indexOf(Math.max(...this.model.defen));transfer(this.chips,winner,null,this._rule.customFour?.coldChips??3);}this._paipu.nekkyou=!!this._rule.nekkyou;if(this._rule.customFour)this._paipu.customFour=CustomFour.validate(this._rule.customFour);this._paipu.bonusChips=this.chips.slice();this._paipu.cold=!!this.cold;return super.jieju();}
 }
 function settle(paipu) {return paipu.defen.map((points,id)=>({id,points,rank:paipu.rank[id],rankChips:(paipu.customFour?.rankChips||(paipu.nekkyou?[15,5,-5,-15]:PAYOUT))[paipu.rank[id]-1],bonusChips:paipu.bonusChips?.[id]||0}));}
-function saveResult(storage,id,results) {
+function saveResult(storage,id,results,rule) {
  const key='jewel-offline-results-v1'; let record;
  try {record=JSON.parse(storage.getItem(key)||'{"games":[],"totals":{}}');}catch{throw Error('保存データを読み取れません。既存データは変更していません。');}
  if(!record||!Array.isArray(record.games)||!record.totals)throw Error('保存データの形式が不正です');
  if(record.games.some(g=>g.id===id))return record;
  for(const r of results){const t=record.totals[r.id]||{rankChips:0,bonusChips:0,games:0};record.totals[r.id]={rankChips:t.rankChips+r.rankChips,bonusChips:t.bonusChips+r.bonusChips,games:t.games+1};}
- record.games.push({id,at:new Date().toISOString(),results});storage.setItem(key,JSON.stringify(record));return record;
+ record.games.push({id,at:new Date().toISOString(),results,ruleMeta:ResultRules.four(rule)});storage.setItem(key,JSON.stringify(record));return record;
 }
-module.exports={M,J,CustomFour,CpuProfiles,Physical,UNLOCK_YAKU,indicatorNumber,garnetValue,rule,actions,cpu,openTargets,Player,Game,bonus,transfer,settle,saveResult};
+module.exports={M,J,CustomFour,ResultRules,CpuProfiles,Physical,UNLOCK_YAKU,indicatorNumber,garnetValue,rule,actions,cpu,openTargets,Player,Game,bonus,transfer,settle,saveResult};
 module.exports.Replay=require('./replay')(module.exports);
 module.exports.Sanma=require('./sanma')(module.exports);

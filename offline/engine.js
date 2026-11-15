@@ -3,11 +3,14 @@ const CpuProfiles=require('./cpu-profiles');
 const ReactionGate=require('./reaction-gate');
 const M = require('../vendor/majiang-core/lib');
 const J=require('./jewels');
+const CustomFour=require('./custom-four');
 const Replay=require('./replay')({M,J});
 const Physical=require('./physical')(M);
 const PAYOUT = [50,25,-25,-50];
 const UNLOCK_YAKU = ['平和','断幺九','一盃口','三色同順','一気通貫','混全帯幺九','七対子','対々和','三暗刻','三色同刻','混老頭','小三元','混一色','純全帯幺九','二盃口','清一色'];
 function rule(extra={}) {
+ if(extra.customFour){if(extra.nekkyou)throw Error('カスタムルールとハードモードは同時に使用できません');const c=CustomFour.validate(extra.customFour);return {...rule({...extra,customFour:null,gemSelection:[]}),customFour:c,customRuleName:c.name,nekkyou:false,jewelBonus:false,fullJewel:false,unlockedYaku:null,gemSelection:[],gemTiles:CustomFour.gems(c),pocchiModes:[],whitePocchi:c.tiles.some(t=>t.base==='z5'),pocchiAmethyst:false,goldPocchi:false,ganePocchi:false};}
+
  for(const key of ['四家立直流局あり','四風連打流局あり'])if(extra[key]!==undefined&&typeof extra[key]!=='boolean')throw Error('途中流局設定が不正です');
  if(extra.cpuLevel!==undefined)CpuProfiles.validate(extra.cpuLevel);
  const modes=extra.pocchiModes||[extra.pocchiMode||'amethyst-white'];
@@ -56,12 +59,12 @@ class Player extends M.Player {
  action(msg,callback) {
   this.message=msg;
   super.action(msg,callback);
-  if(!callback){this.applyOpenHands();this.onUpdate(msg,this);}
+  if(!callback){this.applyOpenHands();globalThis.JewelMortal?.observe(this,msg);this.onUpdate(msg,this);}
  }
  allow_lizhi(hand,tile){if(this._rule.nekkyou)this._rule.jewelIndicators=this.model.shan?.baopai||[];return super.allow_lizhi(hand,tile);}
  applyOpenHands(){if(this.message.qipai)this.model.openRiichi=[false,false,false,false];for(const [l,text]of Object.entries(this.message.openHands||{})){this.model.shoupai[l]=M.Shoupai.fromString(text);this.model.openRiichi??=[false,false,false,false];this.model.openRiichi[l]=true;}}
  respond() {
-  this.applyOpenHands();this.onUpdate(this.message,this);
+  this.applyOpenHands();globalThis.JewelMortal?.observe(this,this.message);this.onUpdate(this.message,this);
   const callback=this._callback;
   // The base Player marks an offered winning discard as passed after this handler
   // returns. Capture legal reactions before an asynchronous riichi popup yields.
@@ -137,7 +140,7 @@ if(!['hule','jieju'].includes(type)&&this._openRiichi?.some(Boolean)){const expo
    for(let seat=0;seat<4;seat++) {
     const id=ids[seat];
     if(this.model.defen[id]>=0 && this.model.defen[id]+h.fenpei[seat]<0 && !this.busted.has(id)) {
-     transfer(this.chips,winner,id,this._rule.nekkyou?5:10);this.busted.add(id);victims.push(id);
+     transfer(this.chips,winner,id,this._rule.customFour?.tobiChips??(this._rule.nekkyou?5:10));this.busted.add(id);victims.push(id);
     }
    }
    h.jewelChips=n;h.jewelTotal=n*(loser===null?3:1);h.chipWinner=winner;h.chipLoser=loser;h.chipBalances=this.chips.slice();h.chipDelta=this.chips.map((v,id)=>v-before[id]);h.tobi=victims;this.bonusLog.push({winner,loser,n,victims});
@@ -146,9 +149,9 @@ if(!['hule','jieju'].includes(type)&&this._openRiichi?.some(Boolean)){const expo
   super.add_paipu(msg);
  }
  last() { if(this._dealerPass&&this._lianzhuang){this._lianzhuang=false;this.model.changbang=0;}if(this.model.defen.some(n=>n>=55000)) {this.cold=true;return this.delay(()=>this.jieju(),0);}return super.last(); }
- jieju() {if(this.cold&&this._rule.nekkyou&&!this._coldAwarded){this._coldAwarded=true;const winner=this.model.defen.indexOf(Math.max(...this.model.defen));transfer(this.chips,winner,null,3);}this._paipu.nekkyou=!!this._rule.nekkyou;this._paipu.bonusChips=this.chips.slice();this._paipu.cold=!!this.cold;return super.jieju();}
+ jieju() {if(this.cold&&(this._rule.nekkyou||this._rule.customFour?.coldChips)&&!this._coldAwarded){this._coldAwarded=true;const winner=this.model.defen.indexOf(Math.max(...this.model.defen));transfer(this.chips,winner,null,this._rule.customFour?.coldChips??3);}this._paipu.nekkyou=!!this._rule.nekkyou;if(this._rule.customFour)this._paipu.customFour=CustomFour.validate(this._rule.customFour);this._paipu.bonusChips=this.chips.slice();this._paipu.cold=!!this.cold;return super.jieju();}
 }
-function settle(paipu) {return paipu.defen.map((points,id)=>({id,points,rank:paipu.rank[id],rankChips:(paipu.nekkyou?[15,5,-5,-15]:PAYOUT)[paipu.rank[id]-1],bonusChips:paipu.bonusChips?.[id]||0}));}
+function settle(paipu) {return paipu.defen.map((points,id)=>({id,points,rank:paipu.rank[id],rankChips:(paipu.customFour?.rankChips||(paipu.nekkyou?[15,5,-5,-15]:PAYOUT))[paipu.rank[id]-1],bonusChips:paipu.bonusChips?.[id]||0}));}
 function saveResult(storage,id,results) {
  const key='jewel-offline-results-v1'; let record;
  try {record=JSON.parse(storage.getItem(key)||'{"games":[],"totals":{}}');}catch{throw Error('保存データを読み取れません。既存データは変更していません。');}
@@ -157,6 +160,6 @@ function saveResult(storage,id,results) {
  for(const r of results){const t=record.totals[r.id]||{rankChips:0,bonusChips:0,games:0};record.totals[r.id]={rankChips:t.rankChips+r.rankChips,bonusChips:t.bonusChips+r.bonusChips,games:t.games+1};}
  record.games.push({id,at:new Date().toISOString(),results});storage.setItem(key,JSON.stringify(record));return record;
 }
-module.exports={M,J,CpuProfiles,Physical,UNLOCK_YAKU,indicatorNumber,garnetValue,rule,actions,cpu,openTargets,Player,Game,bonus,transfer,settle,saveResult};
+module.exports={M,J,CustomFour,CpuProfiles,Physical,UNLOCK_YAKU,indicatorNumber,garnetValue,rule,actions,cpu,openTargets,Player,Game,bonus,transfer,settle,saveResult};
 module.exports.Replay=require('./replay')(module.exports);
 module.exports.Sanma=require('./sanma')(module.exports);

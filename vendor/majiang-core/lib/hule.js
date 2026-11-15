@@ -746,7 +746,7 @@ function hule(shoupai, rongpai, param) {
     const scoringRule={...param.rule,_turquoise:items.some(g=>g.effect==='turquoise')};
 
     let candidates=hule_mianzi(shoupai,rongpai);
-    if(scoringRule._turquoise && physical._fulou.length && !physical._fulou.some(m=>(m.match(/[0-9A]/g)||[]).length===4)) {
+    if(scoringRule._turquoise && physical._fulou.length && !physical._fulou.some(m=>(m.match(/[0-9A-C]/g)||[]).length===4)) {
         const flat=physical.clone();
         for(const m of flat._fulou)for(const n of Majiang.Shoupai.normal_pai(m).match(/[0-9]/g)||[])flat._bingpai[m[0]][+n]++;
         flat._fulou=[];

@@ -34,14 +34,14 @@ function gemsFor(rule,t){const physical=rule.gemTiles?.[t];if(physical)return [p
 function owned(rule,hand){return rawTiles(typeof hand==='string'?hand:hand.toString()).flatMap(t=>gemsFor(rule,t));}
 function has(rule,hand,effect){return owned(rule,hand).some(g=>g.effect===effect);}
 function wildcard(rule,hand){return gemsFor(rule,hand._zimo).some(g=>g.pocchi&&(g.id==='gold-pocchi'||hand.lizhi));}
-function number(p){return p&&p[0]!=='z'?(p[1]==='0'||p[1]==='A'?5:+p[1]):0;}
+function number(p){return p&&p[0]!=='z'?(/[0A-C]/.test(p[1])?5:+p[1]):0;}
 function garnet(indicators=[],ura=[]){return Math.max(0,...indicators.map((p,i)=>number(p[0]==='z'?ura[i]:p)));}
 function full(rule,items){const numbers=Object.values(rule.gemTiles||{}).filter(g=>!g.pocchi);return numbers.length>0&&numbers.every(g=>items.some(x=>x.id===g.id))&&new Set(items.filter(g=>g.pocchi).map(g=>g.id)).size>=2;}
 function modifyHan(items,han,choice){const car=items.some(g=>g.effect==='carnelian');const mode=car&&(choice==='han'||han<=1)?'han':'chips';if(car)han+=mode==='han'?5:-1;const pearls=items.filter(g=>g.effect==='pearl').length;return {han:han*2**pearls,carnelianChoice:car?mode:null};}
 function bonusBreakdown(h,points,unlockedYaku,rule){
  rule=effectiveRule(rule,h.indicators||rule.jewelIndicators,h.fubaopai||[]);const items=owned(rule,h.shoupai),lines=[];
  const add=(label,amount,reason='')=>lines.push({label,amount,reason});
- for(const y of h.hupai||[])if(['一発','裏ドラ'].includes(y.name))add(y.name,+y.fanshu||0);
+ for(const y of h.hupai||[])if(['一発','裏ドラ'].includes(y.name))add(y.name,(+y.fanshu||0)*(rule.customFour?(y.name==='一発'?rule.customFour.ippatsuChips:rule.customFour.uraChips):1));
  if(h.damanguan)add('役満祝儀',(h.baojia==null?(rule.nekkyou?20:10):(rule.nekkyou?40:20))*h.damanguan,h.damanguan+'倍役満');
  else if(h.fanshu>=13)add('数え役満祝儀',h.baojia==null?5:10);
  if(rule.nekkyou){for(const y of h.hupai||[])if(EVENT_YAKU.includes(y.name))add('祝儀手役',5,y.name);if((h.hupai||[]).some(y=>y.name==='清一色'))add('祝儀手役',5,/[,]/.test(h.shoupai)?'副露清一色':'門前清一色');if(h.badOpen)add('愚形オープン',5);}else if((h.hupai||[]).some(y=>y.name===unlockedYaku))add('祝儀手役',5,unlockedYaku);

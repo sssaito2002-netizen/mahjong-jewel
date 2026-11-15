@@ -6,11 +6,11 @@
 module.exports = class Shoupai {
 
     static normal_pai(p) {
-        return p[0] === 'z' ? p.replace(/[089A-C]/g, n=>({0:'5',8:'6',9:'4',A:'5',B:'5',C:'5'}[n])) : p.replace(/[0A]/g,'5');
+        return p[0] === 'z' ? p.replace(/[089A-C]/g, n=>({0:'5',8:'6',9:'4',A:'5',B:'5',C:'5'}[n])) : p.replace(/[0A-C]/g,'5');
     }
 
     static valid_pai(p) {
-        if (p.match(/^(?:[mps][0-9A]|z[0-9A-C])_?\*?[\+\=\-]?$/)) return p;
+        if (p.match(/^(?:[mps][0-9A-C]|z[0-9A-C])_?\*?[\+\=\-]?$/)) return p;
     }
 
     static valid_mianzi(m) {
@@ -42,9 +42,9 @@ module.exports = class Shoupai {
 
         this._bingpai = {
             _:  0,
-            m: [0,0,0,0,0,0,0,0,0,0,0],
-            p: [0,0,0,0,0,0,0,0,0,0,0],
-            s: [0,0,0,0,0,0,0,0,0,0,0],
+            m: [0,0,0,0,0,0,0,0,0,0,0,0,0],
+            p: [0,0,0,0,0,0,0,0,0,0,0,0,0],
+            s: [0,0,0,0,0,0,0,0,0,0,0,0,0],
             z: [0,0,0,0,0,0,0,0,0,0,0,0,0],
         };
         this._fulou = [];
@@ -107,7 +107,7 @@ module.exports = class Shoupai {
             let suitstr = s;
             let bingpai = this._bingpai[s];
             for (let n=1;n<=(s==='z'?7:9);n++) {
-                const markers = s==='z'?({4:[9],5:[0,10,11,12],6:[8]}[n]||[]):n===5?[0,10]:[];
+                const markers = s==='z'?({4:[9],5:[0,10,11,12],6:[8]}[n]||[]):n===5?[0,10,11,12]:[];
                 let total=bingpai[n], special=0;
                 for(const marker of markers){const ch=({10:'A',11:'B',12:'C'}[marker]??String(marker));let count=bingpai[marker]||0;if(this._zimo===s+ch){total--;count--;}special+=count;suitstr+=ch.repeat(Math.max(0,count));}
                 if(this._zimo===s+n)total--;
@@ -165,7 +165,7 @@ module.exports = class Shoupai {
         let bingpai = this._bingpai[s]; n = ({A:10,B:11,C:12}[n]??+n);
         const base = +Shoupai.normal_pai(s+(({10:'A',11:'B',12:'C'}[n]??n)))[1];
         const marker = s==='z' ? ({4:9,5:0,6:8}[base]) : base===5 ? 0 : undefined;
-        const available = n===base ? bingpai[base]-(marker===undefined?0:bingpai[marker])-(base===5?bingpai[10]+(s==='z'?(bingpai[11]||0)+(bingpai[12]||0):0):0) : bingpai[n];
+        const available = n===base ? bingpai[base]-(marker===undefined?0:bingpai[marker])-(base===5?bingpai[10]+(bingpai[11]||0)+(bingpai[12]||0):0) : bingpai[n];
         if (!available) {
             if (!this._bingpai._) throw new Error([this,s+n]);
             this._bingpai._--;

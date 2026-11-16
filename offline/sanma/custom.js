@@ -12,14 +12,15 @@ function validate(value){
  if(startPoints%1000||returnPoints%1000)throw Error('開始点・返し点は1000点単位です');
  if((value.notenPool??(scoring==='bingo'?2000:3000))%1000||(value.honbaRon??300)%100||(value.honbaEach??100)%100)throw Error('本場は100点単位、罰符は1000点単位です');
  if(scoring==='bingo'&&(length!=='east'||startPoints!==30000||returnPoints!==30000||(value.notenPool??2000)!==2000))throw Error('スーパービンゴは東風・30000点開始／返し・罰符2000点です');
+ const settlement=value.settlement??'points',chipPoint=value.chipPoint??1;if(!['points','rank'].includes(settlement)||!Number.isFinite(chipPoint)||chipPoint<0.1||chipPoint>1000||Math.round(chipPoint*10)!==chipPoint*10)throw Error('精算方法と祝儀換算（0.1〜1000pt、0.1pt単位）を確認してください');
  const uma=value.uma??[20,0,-20];if(!Array.isArray(uma)||uma.length!==3||uma.some(n=>!Number.isSafeInteger(n)||Math.abs(n)>1000)||uma.reduce((a,b)=>a+b)!==0)throw Error('ウマは3人分・合計0の整数です');
  if(scoring==='bingo'&&value.tileChips?.some(r=>r.tile?.[0]==='m'))throw Error('スーパービンゴに萬子はありません');
- return {version:1,name,tileChips:TileChips.validate(value.tileChips,{sanma:true}),scoring,length,startPoints,returnPoints,uma:uma.slice(),tsumo,dealerRepeat,redFives:scoring==='bingo'?true:value.redFives??true,nuki:scoring==='bingo'?false:value.nuki??true,bustAtZero:value.bustAtZero??false,agariYame:value.agariYame??true,honbaRon:integer(value.honbaRon??300,0,10000,'ロン本場'),honbaEach:integer(value.honbaEach??100,0,10000,'ツモ本場'),notenPool:integer(value.notenPool??(scoring==='bingo'?2000:3000),0,12000,'ノーテン罰符')};
+ return {version:1,name,tileChips:TileChips.validate(value.tileChips,{sanma:true}),scoring,settlement,chipPoint,length,startPoints,returnPoints,uma:uma.slice(),tsumo,dealerRepeat,redFives:scoring==='bingo'?true:value.redFives??true,nuki:scoring==='bingo'?false:value.nuki??true,bustAtZero:value.bustAtZero??false,agariYame:value.agariYame??true,honbaRon:integer(value.honbaRon??300,0,10000,'ロン本場'),honbaEach:integer(value.honbaEach??100,0,10000,'ツモ本場'),notenPool:integer(value.notenPool??(scoring==='bingo'?2000:3000),0,12000,'ノーテン罰符')};
 }
 function defaults(name='点数三麻・東風'){return validate({version:1,name});}
 function finish(points,order,value,chips=[0,0,0]){
  const c=validate(value),oka=(c.returnPoints-c.startPoints)*3/1000;
- return order.map((id,index)=>({id,rank:index+1,points:points[id],score:c.scoring==='points'?Math.round(((points[id]-c.returnPoints)/1000+c.uma[index]+(index===0?oka:0))*1000)/1000:0,rankChips:c.scoring==='points'?0:undefined,bonusChips:chips[id]}));
+ return order.map((id,index)=>({id,rank:index+1,points:points[id],score:c.scoring==='points'?Math.round(((c.settlement==='rank'?0:(points[id]-c.returnPoints)/1000+(index===0?oka:0))+c.uma[index])*1000)/1000:0,rankChips:c.scoring==='points'?((c.settlement==='rank'?0:(points[id]-c.returnPoints)/1000+(index===0?oka:0))+c.uma[index])/c.chipPoint:undefined,chipPoint:c.chipPoint,settlement:c.settlement,bonusChips:chips[id]}));
 }
 const bingo=(name='スーパービンゴ')=>validate({version:1,name,scoring:'bingo',length:'east',startPoints:30000,returnPoints:30000,notenPool:2000,nuki:false,agariYame:true});
 module.exports={validate,defaults,finish,bingo};

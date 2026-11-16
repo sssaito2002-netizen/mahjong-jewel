@@ -1,7 +1,5 @@
 'use strict';
-// Source-confirmed building blocks. Not selectable until the exceptional
-// all-seven interpretation and tulip settlement have been confirmed.
-const SOURCE='https://note.com/backofatama/n/na1ee5d2c2827';
+// Super Bingo wall, special hands and Tulip settlement.
 const ORPHANS=['p1','p7','p9','s1','s7','s9',...Array.from({length:7},(_,i)=>'z'+(i+1))];
 function wall(){const out=[];for(const suit of ['p','s','z'])for(let n=1;n<=(suit==='z'?7:9);n++)for(let i=0;i<(suit!=='z'&&n===7?8:4);i++)out.push(suit+(suit!=='z'&&n===5&&i<2?'0':n));for(let i=1;i<=4;i++)out.push('f'+i);return out;}
 const normal=t=>/[ps]0/.test(t)?t[0]+'5':t;
@@ -17,7 +15,7 @@ function rank(points,{initialDealer=0}={}){
  const delta=[0,0,0];for(const t of transfers){delta[t.from]-=t.amount;delta[t.to]+=t.amount;}
  return {order,transfers,delta};
 }
-module.exports={SOURCE,ORPHANS,wall,withinFour,sevenOrphans,allSeven,allowedWait,rank};
+module.exports={ORPHANS,wall,withinFour,sevenOrphans,allSeven,allowedWait,rank};
 
 function pairs(tiles,open=false){return !open&&tiles.length===14&&[...counts(tiles).values()].every(n=>n%2===0);}
 function tulip({tiles,flowers=[],wall=[],riichi=false,yakuman=0,tianhu=false,ippatsu=false,han=0}){

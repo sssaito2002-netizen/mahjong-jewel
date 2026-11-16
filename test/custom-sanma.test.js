@@ -33,7 +33,7 @@ test('full point sanma matches conserve points, settle with zero sum and record 
   let seed=length==='east'?12:42;const rng=()=>((seed=(1664525*seed+1013904223)>>>0)/2**32),custom={...C.defaults('テスト・'+length),length,startPoints:100000,returnPoints:100000};
   const g=new S.Game({customSanma:custom,rng,cpuLevel:'standard'});let n=0;while(!g.finished&&n++<16000)g.act(S.cpu(g));
   assert(g.finished);assert.equal(g.round,length==='east'?3:6);assert.equal(g.points.reduce((a,b)=>a+b)+g.sticks*1000,300000);assert.deepEqual(g.chips,[0,0,0]);assert(Math.abs(g.results.reduce((n,r)=>n+r.score,0))<1e-9);
-  const replay=g.exportReplay();assert.equal(replay.rules.settings.customSanma.length,length);assert.equal(replay.rules.settings.customRuleName,custom.name);assert(g.results.every(r=>r.rankChips===0));
+  const replay=g.exportReplay();assert.equal(replay.rules.settings.customSanma.length,length);assert.equal(replay.rules.settings.customRuleName,custom.name);assert(g.results.every(r=>r.rankChips===r.score));
  }
 });
 test('five-style custom south match remains a separate named rule and retains flowers',()=>{

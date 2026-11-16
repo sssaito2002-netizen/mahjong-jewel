@@ -38,7 +38,8 @@ module.exports = class Shoupai {
         }
     }
 
-    constructor(qipai = []) {
+    constructor(qipai = [], allowExtraSevens = false) {
+        this._allowExtraSevens=allowExtraSevens===true;
 
         this._bingpai = {
             _:  0,
@@ -59,13 +60,13 @@ module.exports = class Shoupai {
             if (! (p = Shoupai.valid_pai(p)))       throw new Error(p);
             let s = p[0], n = ({A:10,B:11,C:12}[p[1]]??+p[1]);
             const base = +Shoupai.normal_pai(s+(({10:'A',11:'B',12:'C'}[n]??n)))[1];
-            if (this._bingpai[s][base] >= 4) throw new Error([this,p]);
+            if (this._bingpai[s][base] >= (this._allowExtraSevens&&s!=='z'&&base===7?8:4)) throw new Error([this,p]);
             this._bingpai[s][n]++;
             if (base !== n) this._bingpai[s][base]++;
         }
     }
 
-    static fromString(paistr = '') {
+    static fromString(paistr = '', allowExtraSevens = false) {
 
         let fulou   = paistr.split(',');
         let bingpai = fulou.shift();
@@ -81,7 +82,7 @@ module.exports = class Shoupai {
         }
         qipai = qipai.slice(0, 14 - fulou.filter(x=>x).length * 3);
         let zimo = qipai.length + fulou.length * 3 == 14 && qipai.slice(-1)[0];
-        const shoupai = new Shoupai(qipai);
+        const shoupai = new Shoupai(qipai,allowExtraSevens);
 
         let last;
         for (let m of fulou) {
@@ -141,6 +142,7 @@ module.exports = class Shoupai {
         shoupai._fulou = this._fulou.concat();
         shoupai._zimo  = this._zimo;
         shoupai._lizhi = this._lizhi;
+        shoupai._allowExtraSevens=this._allowExtraSevens;
 
         return shoupai;
     }
@@ -186,7 +188,7 @@ module.exports = class Shoupai {
             let s = p[0], n = ({A:10,B:11,C:12}[p[1]]??+p[1]);
             let bingpai = this._bingpai[s];
             const base = +Shoupai.normal_pai(s+(({10:'A',11:'B',12:'C'}[n]??n)))[1];
-            if (bingpai[base] >= 4) throw new Error([this,p]);
+            if (bingpai[base] >= (this._allowExtraSevens&&s!=='z'&&base===7?8:4)) throw new Error([this,p]);
             bingpai[n]++;
             if (base !== n) bingpai[base]++;
             this._zimo = s+(({10:'A',11:'B',12:'C'}[n]??n));

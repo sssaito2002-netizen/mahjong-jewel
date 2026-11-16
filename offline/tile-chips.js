@@ -4,7 +4,7 @@ function color(value){if(typeof value!=='string'||!/^#[0-9a-f]{6}$/i.test(value)
 function validate(value=[],{sanma=false}={}){
  if(!Array.isArray(value)||value.length>34)throw Error('牌別祝儀の形式が不正です');
  const seen=new Set(),out=[];
- for(const r of value){if(!r||!BASES.includes(r.tile)||sanma&&r.tile[0]==='m'&&!['m1','m9'].includes(r.tile))throw Error('この対局では使えない牌種です');
+ for(const r of value){if(!r||!BASES.includes(r.tile)||sanma&&r.tile[0]==='m'&&!['m1','m5','m9'].includes(r.tile))throw Error('この対局では使えない牌種です');
   if(seen.has(r.tile))throw Error('同じ牌種が重複しています');seen.add(r.tile);
   if(!Number.isSafeInteger(r.chips)||r.chips<0||r.chips>1000)throw Error('牌別祝儀は0〜1000枚の整数です');
   const frame=r.color===undefined?{}:{color:color(r.color)};if(r.chips)out.push({tile:r.tile,chips:r.chips,...frame});

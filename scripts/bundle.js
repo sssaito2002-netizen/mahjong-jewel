@@ -2,7 +2,7 @@
 // Bundle local CommonJS modules without a network dependency; circular imports supported.
 const fs=require('node:fs'),path=require('node:path');
 const root=path.resolve(__dirname,'..'),modules={};
-function visit(file){let id=path.relative(root,file).replaceAll('\\','/');if(modules[id])return id;
+function visit(file){let id=path.relative(root,file).replaceAll('\\','/');if(Object.hasOwn(modules,id))return id;
  let src=fs.readFileSync(file,'utf8');modules[id]='';
  src=src.replace(/require\(['"]([^'"]+)['"]\)/g,(_,name)=>{if(!name.startsWith('.'))throw Error('External dependency '+name);let dep=path.resolve(path.dirname(file),name);if(fs.existsSync(dep)&&fs.statSync(dep).isDirectory())dep+='/index.js';else if(!dep.endsWith('.js'))dep+='.js';return 'require('+JSON.stringify(visit(dep))+')';});
  modules[id]=src;return id;}

@@ -357,7 +357,7 @@ module.exports = class Game {
 
         model.shoupai[model.lunban].fulou(fulou);
 
-        if (fulou.match(/^[mpsz][0-9A-C]{4}/)) {
+        if (fulou.match(/^[mpsz][0-9A-G]{4}/)) {
             this._gang = fulou;
             this._n_gang[model.lunban]++;
         }
@@ -407,7 +407,7 @@ module.exports = class Game {
         let zimo = model.shan.gangzimo();
         // Reveal the new indicator before delivering or recording the rinshan draw.
         if (! this._rule['カンドラ後乗せ'] ||
-            this._gang.match(/^[mpsz][0-9A-C]{4}$/)) this.kaigang();
+            this._gang.match(/^[mpsz][0-9A-G]{4}$/)) this.kaigang();
         model.shoupai[model.lunban].zimo(zimo);
 
         let paipu = { gangzimo: { l: model.lunban, p: zimo } };
@@ -687,7 +687,7 @@ module.exports = class Game {
         }
         this._paipu.rank = rank;
 
-        const round = ! this._rule['順位点'].find(p=>p.match(/\.[0-9A-C]$/));
+        const round = ! this._rule['順位点'].find(p=>p.match(/\.[0-9A-G]$/));
         let point = [0,0,0,0];
         for (let i = 1; i < 4; i++) {
             let id = paiming[i];
@@ -829,13 +829,13 @@ module.exports = class Game {
             let reply = this.get_reply(l);
             if (reply.fulou) {
                 let m = Majiang.Shoupai.normal_pai(reply.fulou);
-                if (m.match(/^[mpsz]([0-9A-C])\1\1\1/)) {
+                if (m.match(/^[mpsz]([0-9A-G])\1\1\1/)) {
                     if (this.get_gang_mianzi(l).find(m => m == reply.fulou)) {
                         this.say('gang', l);
                         return this.delay(()=>this.fulou(reply.fulou));
                     }
                 }
-                else if (m.match(/^[mpsz]([0-9A-C])\1\1/)) {
+                else if (m.match(/^[mpsz]([0-9A-G])\1\1/)) {
                     if (this.get_peng_mianzi(l).find(m => m == reply.fulou)) {
                         this.say('peng', l);
                         return this.delay(()=>this.fulou(reply.fulou));
@@ -878,7 +878,7 @@ module.exports = class Game {
 
         let model = this._model;
 
-        if (this._gang.match(/^[mpsz][0-9A-C]{4}$/)) {
+        if (this._gang.match(/^[mpsz][0-9A-G]{4}$/)) {
             return this.delay(()=>this.gangzimo(), 0);
         }
 
@@ -1015,7 +1015,7 @@ module.exports = class Game {
             && shoupai._zimo && shoupai._zimo.length > 2)
         {
             let deny = shoupai._zimo[0]
-                     + (+shoupai._zimo.match(/[0-9A-C](?=[\+\=\-])/)||5);
+                     + (+shoupai._zimo.match(/[0-9A-G](?=[\+\=\-])/)||5);
             return shoupai.get_dapai(false)
                                 .filter(p => p.replace(/0/,'5') != deny);
         }

@@ -25,7 +25,7 @@ function configure(ids){
  if(ids.filter(id=>BY_ID[id].pocchi).length>4)throw Error('ポッチは最大4種類です');
  return tiles;
 }
-function rawTiles(text){const out=[];for(const part of text.replace(/[+=_*!-]/g,'').match(/[mpsz][0-9A-C]+/g)||[])for(const n of part.slice(1))out.push(part[0]+n);return out;}
+function rawTiles(text){const out=[];for(const part of text.replace(/[+=_*!-]/g,'').match(/[mpsz][0-9A-G]+/g)||[])for(const n of part.slice(1))out.push(part[0]+n);return out;}
 function effectiveRule(rule,indicators=rule.jewelIndicators||[],ura=[]){
  if(!rule.nekkyou)return rule;const inherited={};for(const t of [...indicators,...(ura||[])]){const g=rule.gemTiles?.[t];if(g){const list=inherited[g.base]||=[];if(!list.some(x=>x.id===g.id))list.push(g);}}
  return {...rule,jewelInherited:inherited};
@@ -34,7 +34,7 @@ function gemsFor(rule,t){const physical=rule.gemTiles?.[t];if(physical)return [p
 function owned(rule,hand){return rawTiles(typeof hand==='string'?hand:hand.toString()).flatMap(t=>gemsFor(rule,t));}
 function has(rule,hand,effect){return owned(rule,hand).some(g=>g.effect===effect);}
 function wildcard(rule,hand){return gemsFor(rule,hand._zimo).some(g=>g.pocchi&&(g.id==='gold-pocchi'||hand.lizhi));}
-function number(p){return p&&p[0]!=='z'?(/[0A-C]/.test(p[1])?5:+p[1]):0;}
+function number(p){return p&&p[0]!=='z'?+require('../vendor/majiang-core/lib/shoupai').normal_pai(p)[1]:0;}
 function garnet(indicators=[],ura=[]){return Math.max(0,...indicators.map((p,i)=>number(p[0]==='z'?ura[i]:p)));}
 function full(rule,items){const numbers=Object.values(rule.gemTiles||{}).filter(g=>!g.pocchi);return numbers.length>0&&numbers.every(g=>items.some(x=>x.id===g.id))&&new Set(items.filter(g=>g.pocchi).map(g=>g.id)).size>=2;}
 function modifyHan(items,han,choice){const car=items.some(g=>g.effect==='carnelian');const mode=car&&(choice==='han'||han<=1)?'han':'chips';if(car)han+=mode==='han'?5:-1;const pearls=items.filter(g=>g.effect==='pearl').length;return {han:han*2**pearls,carnelianChoice:car?mode:null};}

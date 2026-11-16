@@ -694,7 +694,7 @@ function get_defen(fu, hupai, rongpai, param) {
 }
 
 function hule(shoupai, rongpai, param) {
-    param={...param,rule:Jewel.effectiveRule(param.rule,param.baopai?.length?param.baopai:param.rule.jewelIndicators,param.fubaopai)};
+    param={...param,rule:Jewel.effectiveRule(param.rule,param.jewelIndicators|| (param.baopai?.length?param.baopai:param.rule.jewelIndicators),param.fubaopai)};
     // A drawn pocchi is a wildcard only after riichi. Evaluate every legal
     // replacement and score the best, preserving the physical Jewel bonus.
     if (!param.pocchi && !rongpai && Jewel.wildcard(param.rule,shoupai)) {
@@ -740,13 +740,14 @@ function hule(shoupai, rongpai, param) {
     if(param.rule.gemTiles)post_hupai=post_hupai.filter(y=>y.name!=='赤ドラ');
     const gemHan=items.reduce((n,g)=>n+g.han,0);
     if(gemHan)post_hupai.push({name:'宝石牌',fanshu:gemHan});
-    if((param.rule.nekkyou?new Set(items.map(g=>g.id)).size:items.length)>=3&&param.rule.jewelBonus)pre_hupai.push({name:'Jewel',fanshu:1});
-    if(param.rule.fullJewel&&Jewel.full(param.rule,items))pre_hupai=[{name:'フルジュエル',fanshu:'*'},...pre_hupai.filter(y=>typeof y.fanshu==='string')];
+    const eventItems=param.rule.jewelSelectedOnly?items.filter(g=>param.rule.gemSelection?.includes(g.id)):items;
+    if((param.rule.nekkyou?new Set(eventItems.map(g=>g.id)).size:eventItems.length)>=3&&param.rule.jewelBonus)pre_hupai.push({name:'Jewel',fanshu:1});
+    if(param.rule.fullJewel&&Jewel.full(param.rule.jewelSelectedOnly?{...param.rule,gemTiles:Object.fromEntries(Object.entries(param.rule.gemTiles).filter(([t,g])=>param.rule.gemSelection?.includes(g.id)))}:param.rule,eventItems))pre_hupai=[{name:'フルジュエル',fanshu:'*'},...pre_hupai.filter(y=>typeof y.fanshu==='string')];
     param={...param,_jewelItems:items};
     const scoringRule={...param.rule,_turquoise:items.some(g=>g.effect==='turquoise')};
 
     let candidates=hule_mianzi(shoupai,rongpai);
-    if(scoringRule._turquoise && physical._fulou.length && !physical._fulou.some(m=>(m.match(/[0-9A-C]/g)||[]).length===4)) {
+    if(scoringRule._turquoise && physical._fulou.length && !physical._fulou.some(m=>(m.match(/[0-9A-G]/g)||[]).length===4)) {
         const flat=physical.clone();
         for(const m of flat._fulou)for(const n of Majiang.Shoupai.normal_pai(m).match(/[0-9]/g)||[])flat._bingpai[m[0]][+n]++;
         flat._fulou=[];
@@ -777,6 +778,8 @@ function hule_param(param = {}) {
     let rv = {
         rule:           param.rule       ?? Majiang.rule(),
         jewelChoice:    param.jewelChoice,
+        jewelIndicators:param.jewelIndicators,
+        pocchi:param.pocchi,
         openRon:        param.openRon ?? false,
         zhuangfeng:     param.zhuangfeng ?? 0,
         menfeng:        param.menfeng    ?? 1,

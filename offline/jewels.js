@@ -58,6 +58,7 @@ function bonusBreakdown(h,points,unlockedYaku,rule){
   add(g.name,amount,reason);
  }
  if(items.some(g=>g.id==='gold')&&items.some(g=>g.id==='gold-pocchi')&&(!h.pocchiAs||h.pocchiAs==='z6'))add('ゴールド＋ゴールド發ポッチ',10);
+ if(rule.customFour?.tileChips?.length)lines.push(...require('./tile-chips').breakdown(rule.customFour.tileChips,rawTiles(h.shoupai).map(t=>require('../vendor/majiang-core/lib/shoupai').normal_pai(t).slice(0,2))));
  const subtotal=lines.reduce((n,l)=>n+l.amount,0),amethysts=items.filter(g=>g.effect==='amethyst'),multiplier=rule.nekkyou?1+amethysts.length:2**amethysts.length;
  return {lines,subtotal,multiplier,multipliers:amethysts.map(g=>g.name),perPayer:subtotal*multiplier};
 }

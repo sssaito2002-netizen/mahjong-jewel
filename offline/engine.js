@@ -5,6 +5,7 @@ const M = require('../vendor/majiang-core/lib');
 const J=require('./jewels');
 const CustomFour=require('./custom-four');
 const ResultRules=require('./result-rules');
+const TileChips=require('./tile-chips');
 const Replay=require('./replay')({M,J});
 const Physical=require('./physical')(M);
 const PAYOUT = [50,25,-25,-50];
@@ -161,6 +162,6 @@ function saveResult(storage,id,results,rule) {
  for(const r of results){const t=record.totals[r.id]||{rankChips:0,bonusChips:0,games:0};record.totals[r.id]={rankChips:t.rankChips+r.rankChips,bonusChips:t.bonusChips+r.bonusChips,games:t.games+1};}
  record.games.push({id,at:new Date().toISOString(),results,ruleMeta:ResultRules.four(rule)});storage.setItem(key,JSON.stringify(record));return record;
 }
-module.exports={M,J,CustomFour,ResultRules,CpuProfiles,Physical,UNLOCK_YAKU,indicatorNumber,garnetValue,rule,actions,cpu,openTargets,Player,Game,bonus,transfer,settle,saveResult};
+module.exports={M,J,CustomFour,ResultRules,TileChips,CpuProfiles,Physical,UNLOCK_YAKU,indicatorNumber,garnetValue,rule,actions,cpu,openTargets,Player,Game,bonus,transfer,settle,saveResult};
 module.exports.Replay=require('./replay')(module.exports);
 module.exports.Sanma=require('./sanma')(module.exports);

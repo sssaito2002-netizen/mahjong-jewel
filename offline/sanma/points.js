@@ -10,6 +10,6 @@ module.exports=function(E){
   const base=r.damanguan?8000*r.damanguan:han>=13?8000:han>=11?6000:han>=8?4000:han>=6?3000:han>=5?2000:Math.min(2000,(r.fu||30)*2**(han+2)),ceil=n=>Math.ceil(n/100)*100,ronPoints=ceil(base*(seat===0?6:4));
   const child=(c.tsumo==='split'?ceil(ronPoints/2):ceil(base*(seat===0?2:1)))+honba*c.honbaEach,dealer=(c.tsumo==='split'?ceil(ronPoints/2):ceil(base*2))+honba*c.honbaEach;
   const label=r.damanguan?'役満':han>=13?'数え役満':han>=11?'三倍満':han>=8?'倍満':han>=6?'跳満':base===2000?'満貫':han+'翻'+r.fu+'符';
-  return {...r,han,yaku,pay:{base,label,tier:0,ron:ronPoints+honba*c.honbaRon,child,dealer},lines:[],eff:[0,0,0,0],tiles:E.J.rawTiles((ron?hand.clone().zimo(ron.slice(0,2)):hand).toString()).map(normal),physical:(ron?hand.clone().zimo(ron.slice(0,2)):hand).toString(),white:false,diceEligible:false,allFlowers:false,fourNorth:false,allStar:false,override:0,allPayBonus:0};
+  return {...r,han,yaku,pay:{base,label,tier:0,ron:ronPoints+honba*c.honbaRon,child,dealer},lines:require('../tile-chips').breakdown(c.tileChips,E.J.rawTiles((ron?hand.clone().zimo(ron.slice(0,2)):hand).toString()).map(normal),{north}),eff:[0,0,0,0],tiles:E.J.rawTiles((ron?hand.clone().zimo(ron.slice(0,2)):hand).toString()).map(normal),physical:(ron?hand.clone().zimo(ron.slice(0,2)):hand).toString(),white:false,diceEligible:false,allFlowers:false,fourNorth:false,allStar:false,override:0,allPayBonus:0};
  };
 };

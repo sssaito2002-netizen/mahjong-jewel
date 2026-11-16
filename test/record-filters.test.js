@@ -23,9 +23,9 @@ test('combined records filter by both connection and named rule, and count the a
  'houseki-online-results-v1':JSON.stringify([{matchId:'online',self:2,ruleMeta,rows:[row(0,1,100,100),row(2,3,-5,-7)]},{matchId:'normal',self:1,ruleMeta:{version:1,game:'four',type:'normal'},rows:[row(1,2,5,2)]}])
  };
  const g=D.load(storage(data)).games.four;assert.equal(g.length,3);
- const total=D.totals(g,4);assert.deepEqual(total,{games:3,rankChips:20,bonusChips:0,placements:[1,1,1,0]});
+ const total=D.totals(g,4);assert.deepEqual(total,{games:3,rankChips:20,bonusChips:0,placements:[1,1,1,0],score:0,pointGames:0});
  const named=D.filter(g,{rule:'custom:A'});assert.equal(named.length,2);
- assert.deepEqual(D.totals(D.filter(g,{rule:'custom:A',connection:'online'}),4),{games:1,rankChips:-5,bonusChips:-7,placements:[0,0,1,0]});
+ assert.deepEqual(D.totals(D.filter(g,{rule:'custom:A',connection:'online'}),4),{games:1,rankChips:-5,bonusChips:-7,placements:[0,0,1,0],score:0,pointGames:0});
  assert.equal(D.filter(g,{connection:'solo'}).length,1);
 });
 test('old records recover only from available settings or replay, never from payouts',()=>{

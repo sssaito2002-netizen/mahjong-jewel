@@ -1,6 +1,7 @@
 'use strict';
 const H=require('./sanma/variants');
-const name=value=>typeof value==='string'?value.trim().slice(0,80):'';
+const ruleName=value=>typeof value==='string'?(['三麻DAN','DAN','DAN風・牌構成'].includes(value.trim())?'オススメ黒船風ルール':value.replace(/DAN/gi,'黒船')):value;
+const name=value=>typeof value==='string'?ruleName(value).trim().slice(0,80):'';
 const meta=(game,type,ruleName='')=>({version:1,game,type,...(type==='custom'?{name:ruleName}:{})});
 function four(rule){
  if(!rule||typeof rule!=='object')return meta('four','unknown');
@@ -13,7 +14,7 @@ function sanma(options){
  if(!options||typeof options!=='object')return meta('sanma','unknown');
  const ruleName=name(options.customRuleName||options.customSanma?.name||options.customRule?.name||options.ruleName);
  if(ruleName)return {...meta('sanma','custom',ruleName),...(options.customSanma?.scoring==='points'?{scoring:'points'}:{})};
- if(options.preset==='dan')return meta('sanma','custom','DAN');
+ if(options.preset==='dan')return meta('sanma','custom','オススメ黒船風ルール');
  let house;try{house=H.validate(options.house);}catch{return meta('sanma','unknown');}
  const flowers={spring:'linked',summer:'rank',autumn:'dora',winter:'alice',...options.flowerRules},pocchi=options.pocchiTypes??(options.whitePocchi===false?[]:[options.pocchiType||'normal']);
  const common=(options.flowerCopies??1)===1&&!options.pocchiIppatsuDice&&Array.isArray(pocchi)&&pocchi.length===1&&pocchi[0]==='normal';
@@ -34,4 +35,4 @@ function infer(game,rows){
  const type=game==='four'?signature==='50,25,-25,-50'?'normal':signature==='15,5,-5,-15'?'hard':null:signature==='20,0,-20'?'jewel':signature==='10,0,-10'||signature==='20,-10,-10'?'normal':null;
  return type?meta(game,type):null;
 }
-module.exports={four,sanma,validate,key,label,infer};
+module.exports={ruleName,four,sanma,validate,key,label,infer};

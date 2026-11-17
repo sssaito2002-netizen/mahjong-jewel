@@ -3,7 +3,7 @@
 const COLORS=Object.freeze({black:0,red:1,gold:2,platinum:3});
 const POCCHI=Object.freeze(['normal','double']);
 const SPEC=Object.freeze({
- id:'dan',name:'三麻DAN',version:1,startingPoints:35000,rankOnly:true,
+ id:'dan',name:'オススメ黒船風ルール',version:1,startingPoints:35000,rankOnly:true,
  firstChips:10,thirdChips:-10,secondThreshold:40000,secondBelowChips:-3,
  topThreshold:80000,topAllChips:2,honbaRon:2000,bustAtZero:true,bustAllChips:2,
  countedYakuman:13,fiveMangan:16,riichiPoints:5000,riichiChipDeposit:2,
@@ -11,7 +11,7 @@ const SPEC=Object.freeze({
 });
 function integer(n,label){if(!Number.isSafeInteger(n))throw Error(label+'は整数です');return n;}
 function base(value){
- if(typeof value!=='string'||!/^(?:m[159]|[ps][1-9]|z[1-7])$/.test(value))throw Error('三麻DANの牌種が不正です');
+ if(typeof value!=='string'||!/^(?:m[159]|[ps][1-9]|z[1-7])$/.test(value))throw Error('黒船風ルールの牌種が不正です');
  return value;
 }
 function tile(value){
@@ -72,7 +72,7 @@ function hiddenChoice(indicator,choice){
 }
 module.exports={SPEC,COLORS,POCCHI,tile,wall,rankSettlement,limit,nextDora,visibleEffect,hiddenChoice};
 
-function profile(){const C=require('./custom'),specialTiles=[];for(const b of ['m5','p5','s5'])for(const [slot,color]of ['platinum','gold','red'].entries())specialTiles.push({base:b,slot,name:({platinum:'プラチナ',gold:'金',red:'赤'})[color]+require('../tile-chips').label(b),han:1,chips:COLORS[color],color:({platinum:'#b4b8ea',gold:'#e8b72c',red:'#e34b59'})[color],danColor:color});for(const b of ['p3','p7','s3','s7'])for(const [slot,color]of ['gold','red'].entries())specialTiles.push({base:b,slot,name:(color==='gold'?'金':'赤')+require('../tile-chips').label(b),han:1,chips:COLORS[color],color:color==='gold'?'#e8b72c':'#e34b59',danColor:color});for(const [slot,pocchi]of ['normal','double'].entries())specialTiles.push({base:'z5',slot,name:pocchi==='double'?'倍ポッチ':'白ポッチ',han:0,chips:0,color:pocchi==='double'?'#cf8bd7':'#a0c9df',pocchi});return C.validate({version:1,name:'三麻DAN',scoring:'dan',length:'east',startPoints:35000,returnPoints:35000,settlement:'rank',uma:[10,0,-10],honbaRon:2000,honbaEach:1000,notenPool:2000,bustAtZero:true,nuki:false,specialTiles,tileRules:C.Tiles.tileRules(undefined,false).map(r=>({...r,...(r.tile==='m5'?{included:true,hand:false,extract:true,nukiDora:true}:{}),...(r.tile==='z4'?{extract:false,nukiDora:false}:{})}))});}
+function profile(){const C=require('./custom'),specialTiles=[];for(const b of ['m5','p5','s5'])for(const [slot,color]of ['platinum','gold','red'].entries())specialTiles.push({base:b,slot,name:({platinum:'プラチナ',gold:'金',red:'赤'})[color]+require('../tile-chips').label(b),han:1,chips:COLORS[color],color:({platinum:'#b4b8ea',gold:'#e8b72c',red:'#e34b59'})[color],danColor:color});for(const b of ['p3','p7','s3','s7'])for(const [slot,color]of ['gold','red'].entries())specialTiles.push({base:b,slot,name:(color==='gold'?'金':'赤')+require('../tile-chips').label(b),han:1,chips:COLORS[color],color:color==='gold'?'#e8b72c':'#e34b59',danColor:color});for(const [slot,pocchi]of ['normal','double'].entries())specialTiles.push({base:'z5',slot,name:pocchi==='double'?'倍ポッチ':'白ポッチ',han:0,chips:0,color:pocchi==='double'?'#cf8bd7':'#a0c9df',pocchi});return C.validate({version:1,name:'オススメ黒船風ルール',scoring:'dan',length:'east',startPoints:35000,returnPoints:35000,settlement:'rank',uma:[10,0,-10],honbaRon:2000,honbaEach:1000,notenPool:2000,bustAtZero:true,nuki:false,specialTiles,tileRules:C.Tiles.tileRules(undefined,false).map(r=>({...r,...(r.tile==='m5'?{included:true,hand:false,extract:true,nukiDora:true}:{}),...(r.tile==='z4'?{extract:false,nukiDora:false}:{})}))});}
 function descriptor(token,rule){const S=require('../../vendor/majiang-core/lib/shoupai'),g=require('../jewels').gemsFor(rule,token)[0];return {base:S.normal_pai(token).slice(0,2),color:g?.danColor||'black',pocchi:S.normal_pai(token).slice(0,2)==='z5'?(g?.pocchiType||(g?.pocchi?'normal':null)):null};}
 function hiddenOptions(indicator,custom){const C=require('./custom'),items=[];for(const suit of ['m','p','s','z'])for(let n=1;n<=(suit==='z'?7:9);n++){const base=suit+n;if(!C.Tiles.settings(custom,base).included)continue;for(const color of indicator.pocchi==='double'&&suit!=='z'?['black','red','gold','platinum']:['black'])items.push({base,color});}return items;}
 function score(E,args,baseScore){

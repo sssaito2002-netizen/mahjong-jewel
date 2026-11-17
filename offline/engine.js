@@ -165,3 +165,4 @@ function saveResult(storage,id,results,rule) {
 module.exports={M,J,CustomFour,ResultRules,TileChips,CpuProfiles,Physical,UNLOCK_YAKU,indicatorNumber,garnetValue,rule,actions,cpu,openTargets,Player,Game,bonus,transfer,settle,saveResult};
 module.exports.Replay=require('./replay')(module.exports);
 module.exports.Sanma=require('./sanma')(module.exports);
+module.exports.RuleExchange=require('./rule-exchange')(module.exports);

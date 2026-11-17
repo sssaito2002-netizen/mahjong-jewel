@@ -7,8 +7,8 @@ test('new four-player results retain rule names independently of profiles and re
  E.saveResult(s,'hard',rows,E.rule({nekkyou:true}));
  E.saveResult(s,'normal',rows,E.rule());
  const list=D.load(s).games.four;
- assert.deepEqual(list.map(g=>R.key(g.ruleMeta)),['custom:DAN風・牌構成','hard','normal']);
- assert.equal(list[0].ruleMeta.name,'DAN風・牌構成');assert.equal(D.filter(list,{rule:'hard'}).length,1);
+ assert.deepEqual(list.map(g=>R.key(g.ruleMeta)),['custom:オススメ黒船風ルール','hard','normal']);
+ assert.equal(list[0].ruleMeta.name,'オススメ黒船風ルール');assert.equal(D.filter(list,{rule:'hard'}).length,1);
 });
 test('sanma exact builtins and changed or named rules remain distinct',()=>{
  const normal=E.Sanma.options(),house=E.Sanma.options({house:E.Sanma.H.PRESET,flowerRules:{spring:'tulip',summer:'rank',autumn:'double',winter:'dice'}});

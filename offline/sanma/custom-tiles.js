@@ -1,0 +1,15 @@
+'use strict';
+const J=require('../jewels'),T=require('../tile-chips');
+const BASES=['m1','m5','m9','z4'];
+function tileRules(value,nuki=true){
+ if(value!==undefined&&(!Array.isArray(value)||value.length>4||new Set(value.map(x=>x?.tile)).size!==value.length||value.some(x=>!BASES.includes(x?.tile))))throw Error('萬子・北の設定が不正です');
+ return BASES.map(tile=>{const raw=value?.find(x=>x.tile===tile),r={tile,included:tile!=='m5',hand:true,extract:tile==='z4'&&nuki,handDora:false,nukiDora:tile==='z4',...raw};for(const k of ['included','hand','extract','handDora','nukiDora'])if(typeof r[k]!=='boolean')throw Error('萬子・北の設定が不正です');if(r.included&&!r.hand&&!r.extract)throw Error(T.label(tile)+'は手牌で使うか抜き牌にしてください');return r;});
+}
+const settings=(c,tile)=>c.tileRules.find(r=>r.tile===tile)||{tile,included:tile[0]!=='m',hand:tile[0]!=='m',extract:false,handDora:false,nukiDora:false};
+const playable=(c,t)=>{const r=settings(c,t);return r.included&&r.hand;};
+function specials(value=[]){if(!Array.isArray(value)||value.length>24)throw Error('特殊牌の形式が不正です');const seen=new Set();return value.map(t=>{const max=/^[ps][37]$/.test(t?.base)?1:/^(?:[mps]5|z5)$/.test(t?.base)?3:-1,key=t?.base+':'+t?.slot;if(max<0||!Number.isInteger(t.slot)||t.slot<0||t.slot>max||seen.has(key))throw Error('特殊牌の牌種・位置が不正です');seen.add(key);if(typeof t.name!=='string'||!t.name.trim()||[...t.name].length>40)throw Error('特殊牌名は1〜40文字です');for(const k of ['han','chips'])if(!Number.isSafeInteger(t[k])||t[k]<0||t[k]>(k==='han'?13:1000))throw Error('特殊牌の翻数・祝儀が不正です');if(t.pocchi!==undefined&&!['normal','double'].includes(t.pocchi))throw Error('ポッチの種類が不正です');if(t.pocchi&&t.base!=='z5')throw Error('ポッチは白に設定してください');return {base:t.base,slot:t.slot,name:t.name.trim(),han:t.han,chips:t.chips,color:T.color(t.color||'#38c9c5'),...(t.danColor&&['red','gold','platinum'].includes(t.danColor)?{danColor:t.danColor}:{}),...(t.pocchi?{pocchi:t.pocchi}:{})};});}
+const token=t=>t.base[0]+(t.base[1]==='3'?['D','E'][t.slot]:t.base[1]==='7'?['F','G'][t.slot]:['0','A','B','C'][t.slot]);
+function gems(c){const out={};for(const t of c.specialTiles||[])out[token(t)]={...t,id:'custom-sanma-'+t.base+'-'+t.slot,effect:'fixed',pocchi:!!t.pocchi,pocchiType:t.pocchi};const chosen=J.configure(c.gemSelection||[]);for(const g of Object.values(chosen))for(const [t,x]of Object.entries(out))if(x.base===g.base)delete out[t];Object.assign(out,chosen);return out;}
+function selection(ids=[]){J.configure(ids);return ids.slice();}
+function nextDora(c,t){const M=require('../../vendor/majiang-core/lib/shoupai'),normal=M.normal_pai(t).slice(0,2),s=normal[0];if(s==='m'){const list=BASES.filter(t=>t[0]==='m'&&settings(c,t).included);if(!list.length)return null;const i=list.indexOf(normal);return list[(i+1)%list.length];}if(s==='z'&&+normal[1]<=4){const list=['z1','z2','z3','z4'].filter(t=>settings(c,t).included);return list[(list.indexOf(normal)+1)%list.length];}return require('../../vendor/majiang-core/lib/shan').zhenbaopai(normal);}
+module.exports={BASES,tileRules,settings,playable,specials,token,gems,selection,nextDora};

@@ -1,0 +1,10 @@
+'use strict';
+const fs=require('node:fs'),path=require('node:path');
+require('./bundle');
+const root=path.resolve(__dirname,'..'),out=path.join(root,'_site');
+fs.rmSync(out,{recursive:true,force:true});
+fs.cpSync(path.join(root,'public/offline'),out,{recursive:true});
+fs.copyFileSync(path.join(root,'THIRD_PARTY_NOTICES.md'),path.join(out,'THIRD_PARTY_NOTICES.md'));
+fs.copyFileSync(path.join(root,'vendor/majiang-core/LICENSE'),path.join(out,'majiang-core-LICENSE.txt'));
+fs.writeFileSync(path.join(out,'.nojekyll'),'');
+console.log('Static site built in _site/ (relative URLs support GitHub Pages project paths)');

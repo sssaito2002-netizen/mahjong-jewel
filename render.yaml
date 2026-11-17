@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: houseki-mahjong-online
+    runtime: node
+    plan: free
+    branch: codex/offline-android
+    buildCommand: node scripts/bundle.js
+    startCommand: node online/server.js
+    healthCheckPath: /health
+    autoDeployTrigger: 'off'
+    envVars:
+      - key: NODE_VERSION
+        value: '22'

@@ -200,7 +200,8 @@ function hule_mianzi(shoupai, rongpai) {
 
 function get_hudi(mianzi, zhuangfeng, menfeng, rule) {
 
-    const zhuangfengpai = new RegExp(`^z[${(rule['場風牌']||[zhuangfeng+1]).join('')}].*$`);
+    const roundWinds = [...new Set([...(rule['場風牌']||[zhuangfeng+1]), ...(rule.sanmaDan ? [4] : [])])];
+    const zhuangfengpai = new RegExp(`^z[${roundWinds.join('')}].*$`);
     const menfengpai    = new RegExp(`^z${menfeng+1}.*$`);
     const sanyuanpai    = /^z[567].*$/;
 
@@ -235,7 +236,7 @@ function get_hudi(mianzi, zhuangfeng, menfeng, rule) {
         danqi:      false,
         pinghu:     false,
         zhuangfeng: zhuangfeng,
-        roundWinds: rule['場風牌']||[zhuangfeng+1],
+        roundWinds: roundWinds,
         menfeng:    menfeng
     };
 
@@ -332,7 +333,7 @@ function get_hupai(mianzi, hudi, pre_hupai, post_hupai, rule) {
         let feng_hanzi = ['東','南','西','北'];
         let fanpai_all = [];
         for (const wind of hudi.roundWinds) if (hudi.kezi.z[wind])
-                fanpai_all.push({ name: '場風 '+feng_hanzi[wind-1], fanshu: 1 });
+                fanpai_all.push({ name: rule.sanmaDan && wind === 4 ? '役牌 北' : '場風 '+feng_hanzi[wind-1], fanshu: 1 });
         if (hudi.kezi.z[hudi.menfeng+1])
                 fanpai_all.push({ name: '自風 '+feng_hanzi[hudi.menfeng],
                                   fanshu: 1 });
